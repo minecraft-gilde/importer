@@ -504,7 +504,12 @@ def main() -> int:
     if args.log_file:
         Path(args.log_file).parent.mkdir(parents=True, exist_ok=True)
         handlers.append(logging.FileHandler(args.log_file, encoding="utf-8"))
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", handlers=handlers)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=handlers,
+    )
     log = logging.getLogger("importer")
 
     stats_dir = Path(args.stats_dir)

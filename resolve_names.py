@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
+import sys
 import time
 import uuid as uuidlib
 from dataclasses import dataclass
@@ -225,6 +227,13 @@ def main() -> int:
     ap.add_argument("--lock-timeout", type=int, default=0, help="Seconds to wait for DB lock (0 = no wait)")
 
     args = ap.parse_args()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+    log = logging.getLogger("resolve_names")
 
     conn = connect_db(args)
     lock_acquired = False
@@ -232,7 +241,7 @@ def main() -> int:
     try:
         lock_acquired = acquire_db_lock(conn, args.lock_name, args.lock_timeout)
         if not lock_acquired:
-            print(f"resolve_names: could not acquire lock '{args.lock_name}'")
+            log.error("resolve_names: could not acquire lock '%s'", args.lock_name)
             return 10
 
         run_id = int(args.run_id) if int(args.run_id) > 0 else get_active_run_id(conn)
@@ -314,9 +323,13 @@ def main() -> int:
 
         conn.commit()
 
-        print(
-            f"resolve_names: run_id={run_id} candidates={total} resolved={resolved} failed={failed} "
-            f"refresh_days={int(args.refresh_days)}"
+        log.info(
+            "resolve_names: run_id=%d candidates=%d resolved=%d failed=%d refresh_days=%d",
+            run_id,
+            total,
+            resolved,
+            failed,
+            int(args.refresh_days),
         )
         return 0
 
