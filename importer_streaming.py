@@ -17,6 +17,7 @@ Designed for:
 Key scalability properties:
 - Streams/batches writes (does NOT keep all rows in RAM)
 - Hash-skip: unchanged players are not rewritten and their metrics are not recomputed
+- Optional override: --ignore-hash treats all kept players as changed
 - Cleanup: players no longer present are removed using a temp table
 
 Usage example:
@@ -483,6 +484,11 @@ def main() -> int:
 
     ap.add_argument("--log-file", default="", help="Optional log file path")
     ap.add_argument("--dry-run", action="store_true", help="Parse and compute only, do not write to DB")
+    ap.add_argument(
+        "--ignore-hash",
+        action="store_true",
+        help="Ignore SHA1 change detection and recompute/write all kept players",
+    )
 
     # batching / scaling knobs
     ap.add_argument("--flush-seen", type=int, default=2000, help="Flush tmp_seen after N uuids")
@@ -547,6 +553,8 @@ def main() -> int:
 
         existing_hash = load_existing_hashes(conn, run_id)
         log.info("Loaded %d existing player hashes", len(existing_hash))
+        if args.ignore_hash:
+            log.info("Hash-skip disabled via --ignore-hash: all kept players will be recomputed.")
         has_source = table_has_column(conn, 'player_profile', 'name_source')
         has_checked = table_has_column(conn, 'player_profile', 'name_checked_at')
 
@@ -658,7 +666,7 @@ def main() -> int:
             json_bytes = json.dumps(stats, sort_keys=True, separators=(",", ":")).encode("utf-8")
             sha1 = hashlib.sha1(json_bytes).digest()
 
-            if existing_hash.get(u_bin) == sha1:
+            if (not args.ignore_hash) and existing_hash.get(u_bin) == sha1:
                 continue
 
             changed += 1

@@ -19,6 +19,7 @@ export STATS_DB_PASS=""
 
 # ====== IMPORT SETTINGS ======
 MIN_PLAY_TICKS="72000"   # e.g. 1h = 72000 ticks
+IGNORE_HASH="0"          # 1=true => pass --ignore-hash for full metric/stat recompute
 
 # Optional: exclude UUID(s)
 # EXCLUDES=( "00000000-0000-0000-0000-000000000000" )
@@ -39,6 +40,9 @@ IMPORTER_ARGS=(
   "--min-play-ticks" "$MIN_PLAY_TICKS"
   "--log-file" "$LOG_FILE"
 )
+if [[ "${IGNORE_HASH}" == "1" || "${IGNORE_HASH,,}" == "true" || "${IGNORE_HASH,,}" == "yes" ]]; then
+  IMPORTER_ARGS+=( "--ignore-hash" )
+fi
 for u in "${EXCLUDES[@]}"; do
   IMPORTER_ARGS+=( "--exclude-uuid" "$u" )
 done

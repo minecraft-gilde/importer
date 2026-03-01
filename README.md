@@ -90,6 +90,7 @@ Im Script stellt man ein:
 - `USERCACHE_JSON` – Pfad zu `usercache.json`
 - `LOG_FILE` – Log-Datei (Importer schreibt aktiv dorthin, Resolver appended)
 - `MIN_PLAY_TICKS` – Mindestspielzeit in Ticks
+- `IGNORE_HASH` – `1/true/yes` setzt `--ignore-hash` (erzwingt Neuberechnung aller behaltenen Spieler)
 - `EXCLUDES` – Liste ausgeschlossener UUIDs
 - Resolver-Tuning: `NAME_REFRESH_DAYS`, `NAME_MAX_PER_RUN`, `NAME_SLEEP_MS`
 
@@ -122,6 +123,7 @@ python3 importer_streaming.py \
 Nützliche Optionen:
 - `--exclude-uuid <uuid>` (repeatable)
 - `--dry-run` (parsen + rechnen, aber nichts in DB schreiben)
+- `--ignore-hash` (Hash-Skip deaktivieren; alle behaltenen Spieler neu berechnen/schreiben)
 - `--lock-name mc_stats_import` / `--lock-timeout 5`
 - `--no-king` oder `--king-points 5,3,1`
 - Flush-Tuning: `--flush-seen`, `--flush-profiles`, `--flush-changed`
