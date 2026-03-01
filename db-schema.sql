@@ -239,7 +239,22 @@ INSERT INTO `metric_def` (`id`, `label`, `category`, `unit`, `sort_order`, `enab
 ('totem_of_undying', 'Totems benutzt', 'Kampf & Kreaturen', NULL, 8, 1, 1, 0),
 ('traded_with_villager', 'Handel mit Dorfbewohnern', 'Alltag & Handel', NULL, 53, 1, 1, 0),
 ('warden', 'Tode durch Warden', 'Kampf & Kreaturen', NULL, 62, 1, 1, 0),
-('zombified_piglin', 'Piglins getötet', 'Kampf & Kreaturen', NULL, 60, 1, 1, 0);
+('zombified_piglin', 'Piglins getötet', 'Kampf & Kreaturen', NULL, 60, 1, 1, 0,
+('wither', 'Wither besiegt', 'Kampf & Kreaturen', NULL, 74, 1, 1, 0),
+('warden_killed', 'Warden besiegt', 'Kampf & Kreaturen', NULL, 75, 1, 1, 0),
+('elder_guardian', 'Großer Wächter besiegt', 'Kampf & Kreaturen', NULL, 76, 1, 1, 0),
+('wither_skeleton_skull', 'Witherskelettschädel gesammelt', 'Mining & Ressourcen', NULL, 77, 1, 1, 0),
+('shulker_shell', 'Shulker-Schalen gesammelt', 'Mining & Ressourcen', NULL, 78, 1, 1, 0),
+('trident', 'Dreizack gefunden', 'Mining & Ressourcen', NULL, 79, 1, 1, 0),
+('dragon_breath', 'Drachenatem gesammelt', 'Mining & Ressourcen', NULL, 80, 1, 1, 0),
+('amethyst_cluster', 'Amethysthaufen abgebaut', 'Mining & Ressourcen', NULL, 81, 1, 1, 0),
+('nether_star', 'Netherstern gesammelt', 'Mining & Ressourcen', NULL, 82, 1, 1, 0),
+('elytra', 'Elytren gefunden', 'Mining & Ressourcen', NULL, 83, 1, 1, 0),
+('echo_shard', 'Echoscherbe gesammelt', 'Mining & Ressourcen', NULL, 84, 1, 1, 0),
+('dragon_head', 'Drachenkopf gefunden', 'Mining & Ressourcen', NULL, 85, 1, 1, 0),
+('netherite_upgrade_smithing_template', 'Schmiedevorlage: Netheritaufwertung gesammelt', 'Mining & Ressourcen', NULL, 86, 1, 1, 0),
+('enchanted_golden_apple', 'Verzauberten goldenen Apfel gegessen', 'Essen & Farmen', NULL, 87, 1, 1, 0),
+('silence_armor_trim_smithing_template', 'Schmiedevorlage: Stille gesammelt', 'Mining & Ressourcen', NULL, 88, 1, 1, 0));
 
 INSERT INTO `metric_source` (`metric_id`, `section`, `mc_key`, `weight`) VALUES
 ('ancient_debris', 'minecraft:mined', 'minecraft:ancient_debris', 1),
@@ -317,6 +332,21 @@ INSERT INTO `metric_source` (`metric_id`, `section`, `mc_key`, `weight`) VALUES
 ('totem_of_undying', 'minecraft:used', 'minecraft:totem_of_undying', 1),
 ('traded_with_villager', 'minecraft:custom', 'minecraft:traded_with_villager', 1),
 ('warden', 'minecraft:killed_by', 'minecraft:warden', 1),
-('zombified_piglin', 'minecraft:killed', 'minecraft:zombified_piglin', 1);
+('zombified_piglin', 'minecraft:killed', 'minecraft:zombified_piglin', 1,
+('wither', 'minecraft:killed', 'minecraft:wither', 1),
+('warden_killed', 'minecraft:killed', 'minecraft:warden', 1),
+('elder_guardian', 'minecraft:killed', 'minecraft:elder_guardian', 1),
+('wither_skeleton_skull', 'minecraft:picked_up', 'minecraft:wither_skeleton_skull', 1),
+('shulker_shell', 'minecraft:picked_up', 'minecraft:shulker_shell', 1),
+('trident', 'minecraft:picked_up', 'minecraft:trident', 1),
+('dragon_breath', 'minecraft:picked_up', 'minecraft:dragon_breath', 1),
+('amethyst_cluster', 'minecraft:mined', 'minecraft:amethyst_cluster', 1),
+('nether_star', 'minecraft:picked_up', 'minecraft:nether_star', 1),
+('elytra', 'minecraft:picked_up', 'minecraft:elytra', 1),
+('echo_shard', 'minecraft:picked_up', 'minecraft:echo_shard', 1),
+('dragon_head', 'minecraft:picked_up', 'minecraft:dragon_head', 1),
+('netherite_upgrade_smithing_template', 'minecraft:picked_up', 'minecraft:netherite_upgrade_smithing_template', 1),
+('enchanted_golden_apple', 'minecraft:used', 'minecraft:enchanted_golden_apple', 1),
+('silence_armor_trim_smithing_template', 'minecraft:picked_up', 'minecraft:silence_armor_trim_smithing_template', 1));
 
 COMMIT;
