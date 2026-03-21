@@ -2,11 +2,28 @@
 
 Importer/ETL für **Minecraft Gilde** (Minecraft-Gilde.de): liest Vanilla-Stats aus dem Minecraft-World-Ordner und schreibt daraus **materialisierte Leaderboards** + **Spieler-Stats** in eine MariaDB/MySQL.
 
-Im Repo sind drei Dateien:
+Wichtige Bestandteile im Repo sind:
 
 - `run_import.sh` – Wrapper/Runner: konfiguriert Pfade + DB-Env und führt Import + Name-Resolver aus
 - `importer_streaming.py` – Hauptimport (Stats -> DB)
 - `resolve_names.py` – Hintergrundjob: Spielernamen via Mojang-Endpoints nachpflegen/aktualisieren
+- `db/schema.sql` – Datenbankschema inklusive Views und initialer Metric-Seeds
+- `db/sample-data.sql` – synthetische Beispieldaten für lokale Entwicklung und Tests
+- `db/README.md` – Dokumentation zum DB-Aufbau, Einspielen und zur Struktur
+
+## Projektstruktur
+
+```text
+.
+├── db
+│   ├── README.md
+│   ├── sample-data.sql
+│   └── schema.sql
+├── importer_streaming.py
+├── resolve_names.py
+├── run_import.sh
+└── README.md
+```
 
 ---
 
