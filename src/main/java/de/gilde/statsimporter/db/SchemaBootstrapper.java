@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.logging.Logger;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -187,7 +186,6 @@ public final class SchemaBootstrapper {
         return new MetricSeeds(definitions, sources);
     }
 
-    @SuppressWarnings("unchecked")
     private List<Map<?, ?>> asMapList(List<?> value) {
         List<Map<?, ?>> output = new ArrayList<>();
         if (value == null) {
@@ -195,7 +193,7 @@ public final class SchemaBootstrapper {
         }
         for (Object item : value) {
             if (item instanceof Map<?, ?> map) {
-                output.add((Map<?, ?>) map);
+                output.add(map);
             }
         }
         return output;
@@ -417,4 +415,3 @@ public final class SchemaBootstrapper {
     ) {
     }
 }
-

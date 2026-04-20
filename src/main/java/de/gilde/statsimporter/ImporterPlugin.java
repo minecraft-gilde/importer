@@ -7,6 +7,7 @@ import de.gilde.statsimporter.db.DatabaseManager;
 import de.gilde.statsimporter.db.SchemaBootstrapper;
 import de.gilde.statsimporter.importer.ImportCoordinator;
 import de.gilde.statsimporter.importer.ImportScheduler;
+import java.io.File;
 import java.util.logging.Level;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -62,7 +63,10 @@ public final class ImporterPlugin extends JavaPlugin {
 
     private void bootstrapRuntime() {
         saveDefaultConfig();
-        saveResource("metric-seeds.yml", false);
+        File seedFile = new File(getDataFolder(), "metric-seeds.yml");
+        if (!seedFile.exists()) {
+            saveResource("metric-seeds.yml", false);
+        }
         settings = ConfigLoader.load(getConfig());
         databaseManager = new DatabaseManager(settings.databaseSettings());
         SchemaBootstrapper bootstrapper = new SchemaBootstrapper(this, databaseManager.dataSource(), settings.bootstrapSettings());

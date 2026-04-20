@@ -1,122 +1,69 @@
-# Datenbank
+# Datenbank (Java-Plugin)
 
-Dieser Ordner enthält alles, was direkt zum Datenbankschema des Projekts gehört.
+Diese Dokumentation beschreibt das Datenbankschema des **Stats Importer Java-Plugins** (Paper/Folia).
 
-Aktuell liegen hier das Schema und ein synthetisches Beispieldataset:
+## Relevante Dateien
 
-```text
-db/
-├── README.md
-├── sample-data.sql
-└── schema.sql
-```
+- `src/main/resources/db/schema.sql`
+- `src/main/resources/metric-seeds.yml`
 
-## Zweck von `schema.sql`
+`schema.sql` enthält die Tabellen und Views. `metric-seeds.yml` enthält die initialen Metrikdefinitionen und Quellenzuordnungen für `metric_def` und `metric_source`.
 
-`schema.sql` richtet die komplette Datenbankbasis für den Importer ein. Das Skript ist als All-in-one-Setup gedacht und erledigt in einem Durchlauf:
+## Was das Java-Plugin beim Start machen kann
 
-- optional das Anlegen der Datenbank `mg-stats`
-- das Anlegen aller benötigten Tabellen
-- das Anlegen der Indizes und Foreign Keys
-- das Anlegen der Views für den aktiven Snapshot
-- das Initial-Seeding von `site_state`
-- das Initial-Seeding von `metric_def` und `metric_source`
+Das Verhalten wird über `bootstrap.*` in der `config.yml` gesteuert:
 
-## Wichtiger Hinweis
+- `bootstrap.auto-schema`: Führt bei fehlendem oder unvollständigem Schema automatisch `db/schema.sql` aus.
+- `bootstrap.verify-schema`: Validiert, ob alle erforderlichen Tabellen/Spalten vorhanden sind.
+- `bootstrap.seed-on-missing-schema`: Importiert Seeds nach einem Schema-Bootstrap.
+- `bootstrap.seed-if-metric-def-empty`: Importiert Seeds, wenn `metric_def` leer ist.
+- `bootstrap.seed-file`: Pfad zur Seed-Datei (standardmäßig `metric-seeds.yml` im Plugin-Datenordner).
 
-Das Schema ist für eine frische oder bewusst neu aufzubauende Datenbank gedacht. Das Skript löscht bestehende Views und Tabellen in definierter Reihenfolge und baut sie anschließend neu auf.
+Der Seed-Import erfolgt als Upsert, damit bestehende Metriken aktualisiert und fehlende ergänzt werden.
 
-Wenn bereits produktive Daten vorhanden sind, sollte `schema.sql` nicht unüberlegt ausgeführt werden.
-
-## Enthaltene Objekte
+## Enthaltene DB-Objekte
 
 ### Lauf- und Zustandsverwaltung
 
-- `import_run`
-  Speichert einzelne Importläufe mit Zeitstempel und Status.
-- `site_state`
-  Hält den globalen Zustand der Anwendung, insbesondere die aktuell aktive `run_id`.
+- `import_run`: Speichert Importläufe mit Zeitstempel und Status.
+- `site_state`: Hält den globalen Zustand, insbesondere `active_run_id`.
 
 ### Spielerbezogene Daten
 
-- `player_profile`
-  Enthält pro Lauf und Spieler die sichtbaren Profildaten wie Name, Suchname und Zeitstempel.
-- `player_stats`
-  Speichert das originale Stats-JSON komprimiert als GZIP plus SHA1-Hash zur Change-Detection.
+- `player_profile`: Sichtbare Profildaten pro Spieler und Lauf.
+- `player_stats`: Komprimiertes Stats-JSON (`stats_gzip`) plus Hash (`stats_sha1`) zur Change-Detection.
 
 ### Metriken und Leaderboards
 
-- `metric_def`
-  Definiert, welche Kennzahlen es gibt, wie sie heißen, sortiert werden und ob sie aktiv sind.
-- `metric_source`
-  Ordnet einer Metrik die zugrunde liegenden Minecraft-Stat-Keys zu.
-- `metric_value`
-  Enthält die materialisierten Werte pro Spieler, Metrik und Importlauf.
-- `metric_award`
-  Optionale Transparenz-Tabelle für Platzierungen und Punkte, zum Beispiel für den "Server-König".
+- `metric_def`: Metrikdefinitionen (Label, Kategorie, Sortierung, Einheiten, Aktiv-Flag).
+- `metric_source`: Zuordnung von Metriken zu Minecraft-Stat-Keys.
+- `metric_value`: Materialisierte Metrikwerte pro Spieler und Lauf.
+- `metric_award`: Optionale Platzierungen/Punkte (z. B. für den `king`-Wert).
 
-### Views
+### Views (aktiver Snapshot)
 
 - `v_player_profile`
 - `v_player_stats`
 - `v_metric_value`
 
-Diese Views zeigen jeweils nur den aktuell aktiven Snapshot anhand von `site_state.active_run_id`.
+Die Views zeigen den aktiven Snapshot über `site_state.active_run_id`.
 
-## Seed-Daten im Schema
+## Manuelles Setup (optional)
 
-Das Schema bringt bereits eine initiale Konfiguration für Leaderboard-Metriken mit. Dazu gehören:
-
-- Labels und Kategorien für die Anzeige
-- Sortierreihenfolgen
-- Einheiten und Divisoren für formatierte Werte
-- die Minecraft-Quell-Keys je Metrik
-
-Dadurch ist die Datenbank nach dem Einspielen nicht nur strukturell vorhanden, sondern direkt für den Importer vorkonfiguriert.
-
-## Verwendung
-
-Ein typischer Import des Schemas sieht zum Beispiel so aus:
+Wenn du das Schema nicht per Plugin-Bootstrap anlegen willst, kannst du es manuell einspielen:
 
 ```bash
-mysql -u <user> -p < db/schema.sql
+mysql -u <user> -p < src/main/resources/db/schema.sql
 ```
 
-Wenn die Datenbank auf dem Zielsystem bereits existiert und nicht vom Skript angelegt werden soll, kann der `CREATE DATABASE`-Teil am Anfang von `schema.sql` auskommentiert werden.
+Die Seed-Daten können anschließend über die Plugin-Bootstrap-Einstellungen eingespielt werden.
 
-## Zweck von `sample-data.sql`
+## Zusammenspiel mit dem Java-Plugin
 
-`sample-data.sql` legt einen vollständigen synthetischen Beispieldatensatz für lokale Entwicklung an. Die Datei ergänzt das Schema um:
+Das Plugin arbeitet auf Basis dieses Schemas und nutzt insbesondere:
 
-- genau 20 Beispielspieler
-- einen aktiven Beispiel-Importlauf
-- vollständige `player_profile`-Einträge
-- vollständige `player_stats`-Einträge mit gzip-komprimiertem JSON
-- `metric_value` für alle aktivierten Metriken
-- `metric_award` für die Top-3-Platzierungen
-- einen berechneten `king`-Wert auf Basis der Awards
+- `site_state` zur Auflösung des aktiven Laufs
+- `metric_def` und `metric_source` zur Metrikberechnung
+- `player_profile`, `player_stats` und `metric_value` als zentrale Import-Zieltabellen
 
-Der Datensatz ist so aufgebaut, dass alle in `metric_source` referenzierten Minecraft-Stat-Keys im JSON vorkommen. Damit eignet er sich gut für Entwicklung, UI-Tests, Leaderboards, Suche und Demo-Umgebungen.
-
-## Empfohlene Import-Reihenfolge
-
-```bash
-mysql -u <user> -p < db/schema.sql
-mysql -u <user> -p < db/sample-data.sql
-```
-
-Nach dem Einspielen von `sample-data.sql` zeigt `site_state.active_run_id` auf den Beispiel-Datensatz.
-
-## Zusammenspiel mit dem Importer
-
-Die Python-Skripte im Projekt erwarten, dass dieses Schema bereits vorhanden ist. Besonders wichtig sind:
-
-- `site_state`, damit der aktuelle aktive Lauf auflösbar ist
-- `metric_def` und `metric_source`, damit überhaupt Metriken berechnet werden können
-- `player_profile`, `player_stats` und `metric_value` als Zieltables für den Import
-
-Fehlen die Metrik-Definitionen, bricht der Importer erwartungsgemäß ab.
-
-## Hinweis zur Wiederverwendung
-
-`sample-data.sql` verwendet eine feste `run_id` für den Beispieldatensatz und kann deshalb mehrfach ausgeführt werden, ohne jedes Mal neue Sample-Runs zu stapeln. Vorhandene echte Daten in anderen `run_id`s werden dabei nicht gelöscht.
+Fehlen diese Strukturen, schlägt die Schema-Validierung fehl und das Plugin startet den Import nicht.

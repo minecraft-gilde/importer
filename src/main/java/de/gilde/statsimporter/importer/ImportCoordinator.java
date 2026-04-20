@@ -4,13 +4,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import de.gilde.statsimporter.config.PluginSettings;
 import de.gilde.statsimporter.model.ComputationResult;
 import de.gilde.statsimporter.model.ImportSummary;
 import de.gilde.statsimporter.model.MetricSource;
 import de.gilde.statsimporter.model.MetricValueRow;
 import de.gilde.statsimporter.model.PlayerProfileMeta;
-import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -78,9 +78,10 @@ public final class ImportCoordinator implements AutoCloseable {
             return thread;
         });
         this.calculator = new StatsCalculator();
-        this.objectMapper = new ObjectMapper();
-        this.objectMapper.configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true);
-        this.objectMapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+        this.objectMapper = JsonMapper.builder()
+                .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
+                .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+                .build();
         this.running = new AtomicBoolean(false);
         this.lastSummary = ImportSummary.neverRan();
     }

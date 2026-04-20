@@ -2,6 +2,12 @@
 
 Dieses Repository enthält jetzt ein Java-Plugin, das den bisherigen Python-Importer für Minecraft-Stats auf Paper/Folia ersetzt.
 
+## Dokumentation
+
+Die ausführliche Projektdokumentation liegt unter:
+
+- [docs/README.md](docs/README.md)
+
 ## Altbestand
 
 Die bisherigen Python-Dateien und DB-Skripte liegen unverändert unter:
@@ -31,7 +37,7 @@ Ergebnis-JAR:
 Die gesamte Laufzeitkonfiguration liegt in:
 
 - `src/main/resources/config.yml`
-- `src/main/resources/metric-seeds.yml` (Seeds fuer `metric_def` und `metric_source`)
+- `src/main/resources/metric-seeds.yml` (Seeds für `metric_def` und `metric_source`)
 
 Wichtig:
 
