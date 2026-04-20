@@ -1,6 +1,7 @@
 package de.gilde.statsimporter.importer;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -14,6 +15,10 @@ import de.gilde.statsimporter.model.PlayerProfileMeta;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
@@ -23,6 +28,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,6 +56,7 @@ public final class ImportCoordinator implements AutoCloseable {
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
+    private static final String NAME_RESOLVER_USER_AGENT = "statsimporter-name-resolver/1.0";
 
     private final JavaPlugin plugin;
     private final Logger logger;
@@ -59,6 +66,7 @@ public final class ImportCoordinator implements AutoCloseable {
     private final ExecutorService calculatorPool;
     private final StatsCalculator calculator;
     private final ObjectMapper objectMapper;
+    private final HttpClient nameResolverHttpClient;
     private final AtomicBoolean running;
     private final AtomicBoolean shuttingDown;
 
@@ -83,6 +91,9 @@ public final class ImportCoordinator implements AutoCloseable {
         this.objectMapper = JsonMapper.builder()
                 .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
                 .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+                .build();
+        this.nameResolverHttpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(settings.importSettings().nameResolverConnectTimeoutMs()))
                 .build();
         this.running = new AtomicBoolean(false);
         this.shuttingDown = new AtomicBoolean(false);
@@ -129,6 +140,7 @@ public final class ImportCoordinator implements AutoCloseable {
         int kept = 0;
         int changed = 0;
         boolean lockAcquired = false;
+        String resolverNote = "";
 
         Path statsDir = resolveStatsDir();
         Path usercachePath = resolveUsercachePath();
@@ -280,7 +292,23 @@ public final class ImportCoordinator implements AutoCloseable {
                         recomputeKingPoints(connection, runId, new ArrayList<>(metricSources.keySet()));
                     }
 
+                    if (settings.nameResolverEnabled()) {
+                        try {
+                            NameResolverResult result = resolveNamesFromMojang(connection, runId, hasNameSource, hasNameCheckedAt);
+                            resolverNote = " | names candidates=" + result.candidates()
+                                    + ", resolved=" + result.resolved()
+                                    + ", failed=" + result.failed()
+                                    + ", skipped=" + result.skipped();
+                        } catch (Exception ex) {
+                            logger.log(Level.WARNING, "Name resolver failed (import data remains committed).", ex);
+                            resolverNote = " | names resolver failed: " + ex.getClass().getSimpleName();
+                        }
+                    }
+
                     touchRun(connection, runId);
+                    if (!resolverNote.isBlank()) {
+                        message = message + resolverNote;
+                    }
                     success = true;
                 } finally {
                     if (lockAcquired) {
@@ -919,6 +947,227 @@ public final class ImportCoordinator implements AutoCloseable {
         connection.commit();
     }
 
+    private NameResolverResult resolveNamesFromMojang(
+            Connection connection,
+            long runId,
+            boolean hasNameSource,
+            boolean hasNameCheckedAt
+    ) throws Exception {
+        List<NameCandidate> candidates = loadNameResolverCandidates(connection, runId, hasNameSource, hasNameCheckedAt);
+        if (candidates.isEmpty()) {
+            logger.info("Name resolver: no candidates.");
+            return new NameResolverResult(0, 0, 0, 0);
+        }
+
+        final String updateSuccessSql;
+        if (hasNameSource && hasNameCheckedAt) {
+            updateSuccessSql = """
+                    UPDATE player_profile
+                    SET name=?, name_lc=?, name_source='mojang', name_checked_at=NOW()
+                    WHERE run_id=? AND uuid=?
+                    """;
+        } else if (hasNameSource) {
+            updateSuccessSql = """
+                    UPDATE player_profile
+                    SET name=?, name_lc=?, name_source='mojang'
+                    WHERE run_id=? AND uuid=?
+                    """;
+        } else {
+            updateSuccessSql = """
+                    UPDATE player_profile
+                    SET name=?, name_lc=?
+                    WHERE run_id=? AND uuid=?
+                    """;
+        }
+
+        int resolved = 0;
+        int failed = 0;
+        int skipped = 0;
+        int sleepMs = settings.nameResolverSleepMs();
+
+        try (PreparedStatement updateResolved = connection.prepareStatement(updateSuccessSql);
+             PreparedStatement updateChecked = hasNameCheckedAt
+                     ? connection.prepareStatement(
+                     "UPDATE player_profile SET name_checked_at=NOW() WHERE run_id=? AND uuid=?"
+             )
+                     : null) {
+            for (int i = 0; i < candidates.size(); i++) {
+                if (shuttingDown.get()) {
+                    skipped += candidates.size() - i;
+                    break;
+                }
+
+                NameCandidate candidate = candidates.get(i);
+                String resolvedName = lookupNameViaMojang(candidate.uuid());
+                if (resolvedName != null) {
+                    updateResolved.setString(1, resolvedName);
+                    updateResolved.setString(2, resolvedName.toLowerCase(Locale.ROOT));
+                    updateResolved.setLong(3, runId);
+                    updateResolved.setBytes(4, UuidCodec.toBytes(candidate.uuid()));
+                    updateResolved.addBatch();
+                    resolved++;
+                } else {
+                    failed++;
+                    if (updateChecked != null) {
+                        updateChecked.setLong(1, runId);
+                        updateChecked.setBytes(2, UuidCodec.toBytes(candidate.uuid()));
+                        updateChecked.addBatch();
+                    }
+                }
+
+                if (sleepMs > 0 && (i + 1) < candidates.size()) {
+                    try {
+                        Thread.sleep(sleepMs);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        skipped += candidates.size() - (i + 1);
+                        break;
+                    }
+                }
+            }
+
+            if (resolved > 0) {
+                updateResolved.executeBatch();
+            }
+            if (failed > 0 && updateChecked != null) {
+                updateChecked.executeBatch();
+            }
+        }
+
+        if (resolved > 0 || (failed > 0 && hasNameCheckedAt)) {
+            connection.commit();
+        }
+
+        logger.info("Name resolver finished: candidates=" + candidates.size()
+                + ", resolved=" + resolved
+                + ", failed=" + failed
+                + ", skipped=" + skipped);
+        return new NameResolverResult(candidates.size(), resolved, failed, skipped);
+    }
+
+    private List<NameCandidate> loadNameResolverCandidates(
+            Connection connection,
+            long runId,
+            boolean hasNameSource,
+            boolean hasNameCheckedAt
+    ) throws SQLException {
+        String missingExpr = "(name IS NULL OR name='' OR name='Unknown' OR name REGEXP '^[0-9a-f]{12}$')";
+        List<String> whereParts = new ArrayList<>();
+
+        if (hasNameSource) {
+            whereParts.add("((name_source IN ('fallback','unknown')) OR " + missingExpr + ")");
+        } else {
+            whereParts.add(missingExpr);
+        }
+
+        boolean applyRefreshWindow = hasNameCheckedAt && settings.nameResolverRefreshDays() > 0;
+        Timestamp refreshCutoff = null;
+        if (applyRefreshWindow) {
+            refreshCutoff = Timestamp.from(Instant.now().minus(Duration.ofDays(settings.nameResolverRefreshDays())));
+            whereParts.add("(name_checked_at IS NULL OR name_checked_at < ?)");
+        }
+
+        String orderBy = hasNameCheckedAt
+                ? " ORDER BY COALESCE(name_checked_at, '1970-01-01'), uuid ASC"
+                : " ORDER BY uuid ASC";
+        String sql = "SELECT uuid FROM player_profile WHERE run_id=? AND ("
+                + String.join(" OR ", whereParts)
+                + ")"
+                + orderBy
+                + " LIMIT ?";
+
+        List<NameCandidate> out = new ArrayList<>();
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            int idx = 1;
+            stmt.setLong(idx++, runId);
+            if (applyRefreshWindow) {
+                stmt.setTimestamp(idx++, refreshCutoff);
+            }
+            stmt.setInt(idx, settings.nameResolverMaxPerRun());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    byte[] uuidBytes = rs.getBytes(1);
+                    if (uuidBytes == null || uuidBytes.length != 16) {
+                        continue;
+                    }
+                    out.add(new NameCandidate(UuidCodec.fromBytes(uuidBytes)));
+                }
+            }
+        }
+        return out;
+    }
+
+    private String lookupNameViaMojang(UUID uuid) {
+        String undashedUuid = uuid.toString().replace("-", "");
+        String sessionName = fetchNameFromSessionServer(undashedUuid, uuid);
+        if (sessionName != null) {
+            return sessionName;
+        }
+        return fetchNameFromNameHistory(undashedUuid, uuid);
+    }
+
+    private String fetchNameFromSessionServer(String undashedUuid, UUID originalUuid) {
+        String url = "https://sessionserver.mojang.com/session/minecraft/profile/" + undashedUuid;
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                .timeout(Duration.ofMillis(settings.nameResolverRequestTimeoutMs()))
+                .header("User-Agent", NAME_RESOLVER_USER_AGENT)
+                .GET()
+                .build();
+        try {
+            HttpResponse<String> response = nameResolverHttpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            int status = response.statusCode();
+            if (status == 200) {
+                JsonNode root = objectMapper.readTree(response.body());
+                JsonNode nameNode = root.get("name");
+                if (nameNode != null && nameNode.isTextual() && !nameNode.asText().isBlank()) {
+                    return trimName(nameNode.asText());
+                }
+                return null;
+            }
+            if (status == 404 || status == 204) {
+                return null;
+            }
+            logger.fine("Name resolver sessionserver returned HTTP " + status + " for " + originalUuid);
+            return null;
+        } catch (Exception ex) {
+            logger.log(Level.FINE, "Name resolver sessionserver request failed for " + originalUuid, ex);
+            return null;
+        }
+    }
+
+    private String fetchNameFromNameHistory(String undashedUuid, UUID originalUuid) {
+        String url = "https://api.mojang.com/user/profiles/" + undashedUuid + "/names";
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                .timeout(Duration.ofMillis(settings.nameResolverRequestTimeoutMs()))
+                .header("User-Agent", NAME_RESOLVER_USER_AGENT)
+                .GET()
+                .build();
+        try {
+            HttpResponse<String> response = nameResolverHttpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            int status = response.statusCode();
+            if (status == 200) {
+                JsonNode root = objectMapper.readTree(response.body());
+                if (!root.isArray() || root.isEmpty()) {
+                    return null;
+                }
+                JsonNode last = root.get(root.size() - 1);
+                JsonNode nameNode = last.get("name");
+                if (nameNode != null && nameNode.isTextual() && !nameNode.asText().isBlank()) {
+                    return trimName(nameNode.asText());
+                }
+                return null;
+            }
+            if (status == 404 || status == 204) {
+                return null;
+            }
+            logger.fine("Name resolver mojang history returned HTTP " + status + " for " + originalUuid);
+            return null;
+        } catch (Exception ex) {
+            logger.log(Level.FINE, "Name resolver mojang history request failed for " + originalUuid, ex);
+            return null;
+        }
+    }
+
     private ProfileRow buildProfileRow(
             long runId,
             UUID uuid,
@@ -1108,6 +1357,17 @@ public final class ImportCoordinator implements AutoCloseable {
             UUID uuid,
             long value,
             int points
+    ) {
+    }
+
+    private record NameCandidate(UUID uuid) {
+    }
+
+    private record NameResolverResult(
+            int candidates,
+            int resolved,
+            int failed,
+            int skipped
     ) {
     }
 }

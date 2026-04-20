@@ -26,7 +26,13 @@ public record PluginSettings(
             boolean kingEnabled,
             String kingMetricId,
             List<Integer> kingPoints,
-            List<UUID> excludedUuids
+            List<UUID> excludedUuids,
+            boolean nameResolverEnabled,
+            int nameResolverMaxPerRun,
+            int nameResolverRefreshDays,
+            int nameResolverSleepMs,
+            int nameResolverConnectTimeoutMs,
+            int nameResolverRequestTimeoutMs
     ) {
     }
 

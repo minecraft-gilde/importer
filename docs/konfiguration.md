@@ -1,4 +1,4 @@
-ï»¿# Konfiguration
+# Konfiguration
 
 ## Speicherort
 
@@ -18,50 +18,66 @@ Default-Werte im Repository:
 |---|---:|---|
 | `import.enabled` | `true` | Aktiviert periodischen Timer-Import beim Pluginstart |
 | `import.interval-seconds` | `60` | Intervall des Timer-Imports in Sekunden (Minimum 1) |
-| `import.ignore-hash-on-timer` | `false` | Ignoriert SHA1-HashprÃ¼fung bei TimerlÃ¤ufen |
+| `import.ignore-hash-on-timer` | `false` | Ignoriert SHA1-Hashprüfung bei Timerläufen |
 
 ## Inputpfade
 
 | Key | Default | Bedeutung |
 |---|---:|---|
-| `import.stats-dir` | `auto` | Pfad zu `world/stats`; `auto/default/standard/leer` wird automatisch aufgelÃ¶st |
+| `import.stats-dir` | `auto` | Pfad zu `world/stats`; `auto/default/standard/leer` wird automatisch aufgelöst |
 | `import.usercache-path` | `auto` | Pfad zu `usercache.json`; bei `auto` wird `<worldContainer>/usercache.json` genutzt |
 
-## Filter und AusschlÃ¼sse
+## Filter und Ausschlüsse
 
 | Key | Default | Bedeutung |
 |---|---:|---|
-| `import.min-play-ticks` | `72000` | Mindestspielzeit fÃ¼r Import (Ticks) |
+| `import.min-play-ticks` | `72000` | Mindestspielzeit für Import (Ticks) |
 | `import.exclude-uuids` | `[]` | UUID-Liste, die komplett ignoriert wird |
 
-Hinweis: UUIDs werden flexibel geparst (mit oder ohne Bindestriche, case-insensitive). UngÃ¼ltige EintrÃ¤ge werden ignoriert.
+Hinweis: UUIDs werden flexibel geparst (mit oder ohne Bindestriche, case-insensitive). Ungültige Einträge werden ignoriert.
 
 ## Performance und Batching
 
 | Key | Default | Bedeutung |
 |---|---:|---|
-| `import.worker-threads` | `6` | Anzahl Berechnungs-Threads fÃ¼r Metriken |
+| `import.worker-threads` | `6` | Anzahl Berechnungs-Threads für Metriken |
 | `import.max-inflight-calculations` | `3000` | Maximal gleichzeitig ausstehende Berechnungen |
-| `import.flush-seen` | `2000` | Batch-GrÃ¶ÃŸe fÃ¼r `tmp_seen` |
-| `import.flush-profiles` | `2000` | Batch-GrÃ¶ÃŸe fÃ¼r `player_profile` |
-| `import.flush-changed` | `800` | Batch-GrÃ¶ÃŸe fÃ¼r geÃ¤nderte Spieler (`player_stats` + `metric_value`) |
+| `import.flush-seen` | `2000` | Batch-Größe für `tmp_seen` |
+| `import.flush-profiles` | `2000` | Batch-Größe für `player_profile` |
+| `import.flush-changed` | `800` | Batch-Größe für geänderte Spieler (`player_stats` + `metric_value`) |
 
 ## DB-Lock
 
 | Key | Default | Bedeutung |
 |---|---:|---|
-| `import.db-lock-name` | `mc_stats_import` | Name fÃ¼r MariaDB Advisory Lock |
-| `import.db-lock-timeout-seconds` | `5` | Wartezeit fÃ¼r Lock-Erwerb |
+| `import.db-lock-name` | `mc_stats_import` | Name für MariaDB Advisory Lock |
+| `import.db-lock-timeout-seconds` | `5` | Wartezeit für Lock-Erwerb |
 
-## Server-KÃ¶nig
+## Server-König
 
 | Key | Default | Bedeutung |
 |---|---:|---|
 | `import.king-enabled` | `true` | Aktiviert Top-3 Punkteberechnung je Metrik |
-| `import.king-metric-id` | `king` | Ziel-Metrik-ID fÃ¼r Summenpunkte |
-| `import.king-points` | `[5, 3, 1]` | Punkte fÃ¼r Platz 1/2/3 |
+| `import.king-metric-id` | `king` | Ziel-Metrik-ID für Summenpunkte |
+| `import.king-points` | `[5, 3, 1]` | Punkte für Platz 1/2/3 |
 
-Hinweis: Die Liste wird intern auf mindestens 3 Werte normalisiert. Fehlende Werte werden mit `0` aufgefÃ¼llt.
+Hinweis: Die Liste wird intern auf mindestens 3 Werte normalisiert. Fehlende Werte werden mit `0` aufgefüllt.
+
+## Namensauflösung (Mojang)
+
+| Key | Default | Bedeutung |
+|---|---:|---|
+| `import.name-resolver.enabled` | `true` | Aktiviert Mojang-Namensauflösung nach jedem erfolgreichen Import |
+| `import.name-resolver.max-per-run` | `1500` | Maximale Anzahl Kandidaten pro Lauf |
+| `import.name-resolver.refresh-days` | `30` | Re-Check-Intervall in Tagen (`0` = nur fehlende/Fallback-Namen) |
+| `import.name-resolver.sleep-ms` | `150` | Pause zwischen Requests (Rate-Limit-Schutz) |
+| `import.name-resolver.connect-timeout-ms` | `5000` | Timeout für den Verbindungsaufbau |
+| `import.name-resolver.request-timeout-ms` | `5000` | Timeout pro HTTP-Request |
+
+Resolver-Reihenfolge:
+
+1. `https://sessionserver.mojang.com/session/minecraft/profile/<uuid>`
+2. `https://api.mojang.com/user/profiles/<uuid>/names` (letzter Name aus Verlauf)
 
 ## Abschnitt `database`
 
@@ -72,8 +88,8 @@ Hinweis: Die Liste wird intern auf mindestens 3 Werte normalisiert. Fehlende Wer
 | `database.name` | `mg-stats` | DB-Name |
 | `database.user` | `stats_user` | DB-Benutzer |
 | `database.password` | `change-me` | DB-Passwort |
-| `database.pool-max-size` | `10` | Hikari PoolGrÃ¶ÃŸe |
-| `database.connection-timeout-ms` | `10000` | Timeout fÃ¼r DB-Verbindungen |
+| `database.pool-max-size` | `10` | Hikari PoolGröße |
+| `database.connection-timeout-ms` | `10000` | Timeout für DB-Verbindungen |
 
 Pflichtfelder:
 
@@ -88,7 +104,7 @@ Fehlen diese Werte, bricht der Pluginstart mit Konfigurationsfehler ab.
 | Key | Default | Bedeutung |
 |---|---:|---|
 | `bootstrap.auto-schema` | `true` | Schema bei fehlenden DB-Objekten automatisch anwenden |
-| `bootstrap.verify-schema` | `true` | Schema auf Pflichtobjekte prÃ¼fen |
+| `bootstrap.verify-schema` | `true` | Schema auf Pflichtobjekte prüfen |
 | `bootstrap.seed-on-missing-schema` | `true` | Nach Schema-Erstellung Seed-Import starten |
 | `bootstrap.seed-if-metric-def-empty` | `true` | Seed-Import starten, wenn `metric_def` leer ist |
 | `bootstrap.seed-file` | `metric-seeds.yml` | Seed-Datei (relativ zu Plugin-Datenordner oder absolut) |
@@ -103,6 +119,11 @@ Einige Werte werden beim Laden begrenzt:
 - `max-inflight-calculations >= 10`
 - `flush-* >= 1`
 - `db-lock-timeout-seconds >= 0`
+- `name-resolver.max-per-run >= 1`
+- `name-resolver.refresh-days >= 0`
+- `name-resolver.sleep-ms >= 0`
+- `name-resolver.connect-timeout-ms >= 1000`
+- `name-resolver.request-timeout-ms >= 1000`
 - `database.port >= 1`
 - `pool-max-size >= 1`
 - `connection-timeout-ms >= 1000`
@@ -132,6 +153,6 @@ Einige Werte werden beim Laden begrenzt:
 - `flush-seen/profiles: 2000-5000`
 - `flush-changed: 1000-3000`
 
-Wichtig: ErhÃ¶he Werte schrittweise und beobachte DB-Latenzen, GC-Verhalten und Importdauer.
+Wichtig: Erhöhe Werte schrittweise und beobachte DB-Latenzen, GC-Verhalten und Importdauer.
 
 

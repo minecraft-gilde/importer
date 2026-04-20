@@ -30,7 +30,13 @@ public final class ConfigLoader {
                 config.getBoolean("import.king-enabled", true),
                 config.getString("import.king-metric-id", "king"),
                 normalizePoints(config.getIntegerList("import.king-points")),
-                parseExcludedUuids(config.getStringList("import.exclude-uuids"))
+                parseExcludedUuids(config.getStringList("import.exclude-uuids")),
+                config.getBoolean("import.name-resolver.enabled", true),
+                Math.max(1, config.getInt("import.name-resolver.max-per-run", 1500)),
+                Math.max(0, config.getInt("import.name-resolver.refresh-days", 30)),
+                Math.max(0, config.getInt("import.name-resolver.sleep-ms", 150)),
+                Math.max(1000, config.getInt("import.name-resolver.connect-timeout-ms", 5000)),
+                Math.max(1000, config.getInt("import.name-resolver.request-timeout-ms", 5000))
         );
 
         String dbHost = mustNotBeBlank(config.getString("database.host", ""), "database.host");

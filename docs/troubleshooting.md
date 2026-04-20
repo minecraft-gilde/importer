@@ -67,13 +67,16 @@ Lösung:
 
 Hintergrund:
 
-- Das Java-Plugin nutzt primär `usercache.json`, kein aktives Mojang-Resolver-Jobsystem
+- Der Import selbst nutzt zuerst `usercache.json`; optionale Mojang-Auflösung läuft nur bei aktivem Resolver.
 
 Lösung:
 
 - `import.usercache-path` prüfen
 - sicherstellen, dass `usercache.json` aktuell ist
 - optional vorhandene DB-Namen als Zwischenquelle nutzen (wird automatisch gemacht)
+- `import.name-resolver.enabled: true` setzen
+- bei großen Servern `import.name-resolver.max-per-run` erhöhen (z. B. `5000`)
+- bei Rate-Limits `import.name-resolver.sleep-ms` erhöhen (z. B. `250-500`)
 
 ## `/statsimport reload` funktioniert nicht während Import
 

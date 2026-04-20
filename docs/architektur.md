@@ -96,8 +96,9 @@ Beim Stop (`onDisable`) werden Scheduler, Workerpools und DB-Pool sauber geschlo
 20. Nach Scan alle Restarbeiten flushen
 21. Daten verwaister Spieler über `tmp_seen` bereinigen
 22. Optional "king" Punkte neu berechnen
-23. Laufzeitstempel aktualisieren und Summary setzen
-24. DB Lock freigeben
+23. Optional Namen via Mojang auflösen (`import.name-resolver.enabled`)
+24. Laufzeitstempel aktualisieren und Summary setzen
+25. DB Lock freigeben
 
 ## Parallelisierung und Backpressure
 
@@ -124,6 +125,13 @@ Priorität bei Spielernamen:
 3. stabiler Fallback auf UUID-Substring
 
 Wenn Spalten vorhanden sind, werden `name_source` und `name_checked_at` gepflegt.
+
+Optionaler Mojang-Resolver:
+
+- Kandidaten: `fallback`/`unknown`, 12-hex Fallback-Namen, optional stale Checks via `refresh-days`
+- Endpoint-Reihenfolge: Sessionserver, dann Mojang Name-History
+- Bei Erfolg: `name`, `name_lc`, `name_source='mojang'`, `name_checked_at=NOW()` (falls Spalte vorhanden)
+- Bei Fehlschlag: `name_checked_at=NOW()` (falls Spalte vorhanden), um sofortige Retries zu vermeiden
 
 ## "Server-König" Logik
 

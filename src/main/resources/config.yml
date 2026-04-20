@@ -33,6 +33,20 @@ import:
   king-points: [5, 3, 1]
   # UUIDs, die komplett vom Import ausgeschlossen werden.
   exclude-uuids: []
+  # Optionaler Mojang-Resolver fuer fehlende/veraltete Namen.
+  name-resolver:
+    # Aktiviert den Resolver nach jedem erfolgreichen Importlauf.
+    enabled: true
+    # Maximal aufgeloeste Spieler pro Lauf.
+    max-per-run: 1500
+    # Erneut pruefen, wenn letzter Check aelter als X Tage ist (0 = nur fehlende/fallback Namen).
+    refresh-days: 30
+    # Pause zwischen Mojang-Requests in Millisekunden.
+    sleep-ms: 150
+    # Verbindungs-Timeout pro HTTP-Verbindung in Millisekunden.
+    connect-timeout-ms: 5000
+    # Request-Timeout pro Mojang-HTTP-Call in Millisekunden.
+    request-timeout-ms: 5000
 
 database:
   # DB-Host (MariaDB/MySQL).
