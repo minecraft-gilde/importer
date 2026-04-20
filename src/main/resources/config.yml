@@ -1,0 +1,34 @@
+import:
+  enabled: true
+  interval-seconds: 60
+  stats-dir: "auto"
+  usercache-path: "auto"
+  min-play-ticks: 72000
+  worker-threads: 6
+  max-inflight-calculations: 3000
+  flush-seen: 2000
+  flush-profiles: 2000
+  flush-changed: 800
+  ignore-hash-on-timer: false
+  db-lock-name: "mc_stats_import"
+  db-lock-timeout-seconds: 5
+  king-enabled: true
+  king-metric-id: "king"
+  king-points: [5, 3, 1]
+  exclude-uuids: []
+
+database:
+  host: "127.0.0.1"
+  port: 3306
+  name: "mg-stats"
+  user: "stats_user"
+  password: "change-me"
+  pool-max-size: 10
+  connection-timeout-ms: 10000
+
+bootstrap:
+  auto-schema: true
+  verify-schema: true
+  seed-on-missing-schema: true
+  seed-if-metric-def-empty: true
+  seed-file: "metric-seeds.yml"
