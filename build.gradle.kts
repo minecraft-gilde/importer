@@ -26,7 +26,7 @@ java {
 }
 
 tasks.processResources {
-    filesMatching("plugin.yml") {
+    filesMatching(listOf("plugin.yml", "paper-plugin.yml")) {
         expand(
             mapOf(
                 "version" to project.version

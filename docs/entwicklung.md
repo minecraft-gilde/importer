@@ -13,6 +13,7 @@ src/main/java/de/gilde/statsimporter
 
 src/main/resources
   plugin.yml
+  paper-plugin.yml
   config.yml
   metric-seeds.yml
   db/schema.sql

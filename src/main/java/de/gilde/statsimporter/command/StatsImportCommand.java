@@ -2,17 +2,17 @@ package de.gilde.statsimporter.command;
 
 import de.gilde.statsimporter.ImporterPlugin;
 import de.gilde.statsimporter.model.ImportSummary;
+import io.papermc.paper.command.brigadier.BasicCommand;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 
-public final class StatsImportCommand implements CommandExecutor, TabCompleter {
+public final class StatsImportCommand implements BasicCommand {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
             .withLocale(Locale.GERMAN)
@@ -25,10 +25,11 @@ public final class StatsImportCommand implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    public void execute(CommandSourceStack commandSourceStack, String[] args) {
+        CommandSender sender = commandSourceStack.getSender();
         if (args.length == 0) {
-            sender.sendMessage("Nutze: /" + label + " <run|status|reload>");
-            return true;
+            sender.sendMessage("Nutze: /statsimport <run|status|reload>");
+            return;
         }
 
         String sub = args[0].toLowerCase(Locale.ROOT);
@@ -38,7 +39,6 @@ public final class StatsImportCommand implements CommandExecutor, TabCompleter {
             case "reload" -> sender.sendMessage(plugin.reloadRuntime());
             default -> sender.sendMessage("Unbekannter Subcommand. Nutze: run, status oder reload.");
         }
-        return true;
     }
 
     private void handleRun(CommandSender sender, String[] args) {
@@ -67,7 +67,7 @@ public final class StatsImportCommand implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+    public Collection<String> suggest(CommandSourceStack commandSourceStack, String[] args) {
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
             addIfMatches(completions, args[0], "run");
@@ -79,10 +79,14 @@ public final class StatsImportCommand implements CommandExecutor, TabCompleter {
         return completions;
     }
 
+    @Override
+    public String permission() {
+        return "statsimporter.admin";
+    }
+
     private void addIfMatches(List<String> completions, String input, String candidate) {
         if (candidate.startsWith(input.toLowerCase(Locale.ROOT))) {
             completions.add(candidate);
         }
     }
 }
-

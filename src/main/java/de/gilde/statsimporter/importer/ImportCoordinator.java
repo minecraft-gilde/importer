@@ -39,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -59,6 +60,7 @@ public final class ImportCoordinator implements AutoCloseable {
     private final StatsCalculator calculator;
     private final ObjectMapper objectMapper;
     private final AtomicBoolean running;
+    private final AtomicBoolean shuttingDown;
 
     private volatile ImportSummary lastSummary;
 
@@ -83,10 +85,14 @@ public final class ImportCoordinator implements AutoCloseable {
                 .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
                 .build();
         this.running = new AtomicBoolean(false);
+        this.shuttingDown = new AtomicBoolean(false);
         this.lastSummary = ImportSummary.neverRan();
     }
 
     public boolean triggerImport(String reason, boolean ignoreHashOverride) {
+        if (shuttingDown.get()) {
+            return false;
+        }
         if (!running.compareAndSet(false, true)) {
             return false;
         }
@@ -104,8 +110,15 @@ public final class ImportCoordinator implements AutoCloseable {
 
     @Override
     public void close() {
+        shuttingDown.set(true);
         importExecutor.shutdownNow();
         calculatorPool.shutdownNow();
+        try {
+            importExecutor.awaitTermination(10, TimeUnit.SECONDS);
+            calculatorPool.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void runImport(String reason, boolean ignoreHashOverride) {
@@ -131,6 +144,7 @@ public final class ImportCoordinator implements AutoCloseable {
 
             try (Connection connection = dataSource.getConnection()) {
                 try {
+                    // Named DB lock keeps parallel plugin instances/nodes from writing the same run simultaneously.
                     lockAcquired = acquireDbLock(connection, settings.dbLockName(), settings.dbLockTimeoutSeconds());
                     if (!lockAcquired) {
                         message = "Could not acquire DB lock '" + settings.dbLockName() + "'";
@@ -138,6 +152,7 @@ public final class ImportCoordinator implements AutoCloseable {
                         return;
                     }
 
+                    // We keep one active run_id and update it in place so readers always see one coherent snapshot.
                     long runId = ensureRunId(connection);
                     logger.info("Using run_id=" + runId + " (in-place)");
 
@@ -160,12 +175,14 @@ public final class ImportCoordinator implements AutoCloseable {
                     recreateTmpSeen(connection);
 
                     Set<UUID> excluded = new HashSet<>(settings.excludedUuids());
+                    // Buffers batch DB writes to reduce round-trips while still committing regularly.
                     List<UUID> seenBuffer = new ArrayList<>();
                     List<ProfileRow> profileBuffer = new ArrayList<>();
                     List<UUID> changedUuidsBuffer = new ArrayList<>();
                     List<StatsRow> statsRowsBuffer = new ArrayList<>();
                     List<MetricValueRow> metricRowsBuffer = new ArrayList<>();
 
+                    // Backpressure guard: cap submitted calculator jobs so memory usage stays bounded.
                     int maxInflight = Math.max(settings.workerThreads(), settings.maxInflightCalculations());
                     Semaphore inflightSemaphore = new Semaphore(maxInflight);
                     ExecutorCompletionService<ComputationResult> completionService = new ExecutorCompletionService<>(calculatorPool);
@@ -192,6 +209,7 @@ public final class ImportCoordinator implements AutoCloseable {
                             }
 
                             Map<String, Object> stats = extractStatsMap(root);
+                            // Legacy banner keys are filtered so removed/renamed blocks do not skew totals.
                             stripWallBanners(stats);
 
                             long playTicks = nestedLong(stats, "minecraft:custom", "minecraft:play_time");
@@ -221,6 +239,7 @@ public final class ImportCoordinator implements AutoCloseable {
                             byte[] canonicalStatsJson = objectMapper.writeValueAsBytes(stats);
                             byte[] sha1 = sha1(canonicalStatsJson);
                             boolean ignoreHash = ignoreHashOverride || ("timer".equals(reason) && settings.ignoreHashOnTimer());
+                            // Unchanged players skip expensive recomputation; completed async tasks are still drained.
                             if (!ignoreHash && Arrays.equals(existingHashes.get(uuid), sha1)) {
                                 completed += drainReadyResults(connection, completionService, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer, runId, false);
                                 continue;
@@ -229,6 +248,7 @@ public final class ImportCoordinator implements AutoCloseable {
                             changed++;
                             existingHashes.put(uuid, sha1);
 
+                            // Acquire before submit to ensure the in-flight cap is respected.
                             inflightSemaphore.acquire();
                             submitted++;
                             Map<String, Object> statsForTask = stats;
@@ -245,6 +265,7 @@ public final class ImportCoordinator implements AutoCloseable {
                     }
 
                     while (completed < submitted) {
+                        // Final blocking drain: wait until every submitted calculator result was persisted.
                         completed += drainReadyResults(connection, completionService, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer, runId, true);
                     }
 
@@ -252,6 +273,7 @@ public final class ImportCoordinator implements AutoCloseable {
                     flushProfiles(connection, profileBuffer, hasNameSource, hasNameCheckedAt);
                     flushChangedBatch(connection, runId, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer);
 
+                    // Remove rows for players whose stats file no longer exists in this import pass.
                     cleanupMissing(connection, runId);
 
                     if (settings.kingEnabled()) {
@@ -273,7 +295,11 @@ public final class ImportCoordinator implements AutoCloseable {
             }
         } catch (Exception ex) {
             message = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
-            logger.log(Level.SEVERE, "Import failed", ex);
+            if (shuttingDown.get()) {
+                logger.log(Level.INFO, "Import stopped due to plugin shutdown: " + message);
+            } else {
+                logger.log(Level.SEVERE, "Import failed", ex);
+            }
         } finally {
             ImportSummary summary = new ImportSummary(
                     startedAt,
@@ -307,6 +333,7 @@ public final class ImportCoordinator implements AutoCloseable {
     ) throws Exception {
         int drained = 0;
         if (forceBlocking) {
+            // During shutdown phase we block for at least one result to guarantee forward progress.
             Future<ComputationResult> future = completionService.take();
             appendComputedResult(future.get(), changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer);
             drained++;
@@ -554,6 +581,7 @@ public final class ImportCoordinator implements AutoCloseable {
     }
 
     private void recreateTmpSeen(Connection connection) throws SQLException {
+        // Connection-local temp table tracks all UUIDs seen in this run for cleanupMissing().
         try (PreparedStatement drop = connection.prepareStatement("DROP TEMPORARY TABLE IF EXISTS tmp_seen");
              PreparedStatement create = connection.prepareStatement(
                      "CREATE TEMPORARY TABLE tmp_seen (uuid BINARY(16) PRIMARY KEY) ENGINE=InnoDB"
@@ -658,6 +686,7 @@ public final class ImportCoordinator implements AutoCloseable {
             return;
         }
 
+        // Split DELETE ... IN (...) to avoid very large statements and placeholder limits.
         for (int i = 0; i < changedUuids.size(); i += 1500) {
             List<UUID> chunk = changedUuids.subList(i, Math.min(changedUuids.size(), i + 1500));
             String placeholders = String.join(",", Collections.nCopies(chunk.size(), "?"));
@@ -720,6 +749,7 @@ public final class ImportCoordinator implements AutoCloseable {
     }
 
     private void cleanupMissing(Connection connection, long runId) throws SQLException {
+        // Anything not seen in tmp_seen during this run is removed from the active snapshot.
         String deleteProfiles = """
                 DELETE p FROM player_profile p
                 LEFT JOIN tmp_seen s ON p.uuid = s.uuid
@@ -755,6 +785,7 @@ public final class ImportCoordinator implements AutoCloseable {
         int p2 = points.get(1);
         int p3 = points.get(2);
 
+        // Rebuild king values from scratch each run to avoid carrying stale ranking points forward.
         ensureKingMetric(connection, kingMetricId);
         boolean hasAwardsTable = tableExists(connection, "metric_award");
         Map<UUID, Integer> kingScoreByPlayer = new HashMap<>();
@@ -901,6 +932,7 @@ public final class ImportCoordinator implements AutoCloseable {
         Timestamp checkedAt;
 
         String fromUsercache = usercacheNames.get(uuid);
+        // Name priority: usercache -> previous profile -> deterministic UUID fallback.
         if (fromUsercache != null && !fromUsercache.isBlank()) {
             name = trimName(fromUsercache);
             source = "usercache";
@@ -942,6 +974,7 @@ public final class ImportCoordinator implements AutoCloseable {
 
     @SuppressWarnings("unchecked")
     private void stripWallBanners(Map<String, Object> stats) {
+        // Some versions exposed per-color wall banner stats; removing them keeps metric history stable.
         for (Map.Entry<String, Object> sectionEntry : stats.entrySet()) {
             Object maybeMap = sectionEntry.getValue();
             if (!(maybeMap instanceof Map<?, ?> section)) {

@@ -8,8 +8,9 @@ import de.gilde.statsimporter.db.SchemaBootstrapper;
 import de.gilde.statsimporter.importer.ImportCoordinator;
 import de.gilde.statsimporter.importer.ImportScheduler;
 import java.io.File;
+import java.util.List;
 import java.util.logging.Level;
-import org.bukkit.command.PluginCommand;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class ImporterPlugin extends JavaPlugin {
@@ -25,6 +26,7 @@ public final class ImporterPlugin extends JavaPlugin {
         try {
             bootstrapRuntime();
             registerCommands();
+            startSchedulerIfConfigured();
             getLogger().info("StatsImporter enabled.");
         } catch (Exception ex) {
             getLogger().log(Level.SEVERE, "Could not start plugin runtime", ex);
@@ -46,6 +48,7 @@ public final class ImporterPlugin extends JavaPlugin {
             shutdownRuntime();
             reloadConfig();
             bootstrapRuntime();
+            startSchedulerIfConfigured();
             return "Konfiguration neu geladen.";
         } catch (Exception ex) {
             getLogger().log(Level.SEVERE, "Reload failed", ex);
@@ -77,6 +80,9 @@ public final class ImporterPlugin extends JavaPlugin {
         }
         importCoordinator = new ImportCoordinator(this, settings, databaseManager.dataSource());
         importScheduler = new ImportScheduler(this, importCoordinator);
+    }
+
+    private void startSchedulerIfConfigured() {
         if (settings.importSettings().enabled()) {
             importScheduler.start(settings.importSettings().intervalSeconds(), settings.importSettings().ignoreHashOnTimer());
         }
@@ -98,12 +104,12 @@ public final class ImporterPlugin extends JavaPlugin {
     }
 
     private void registerCommands() {
-        PluginCommand command = getCommand("statsimport");
-        if (command == null) {
-            throw new IllegalStateException("Command 'statsimport' missing in plugin.yml");
-        }
-        StatsImportCommand executor = new StatsImportCommand(this);
-        command.setExecutor(executor);
-        command.setTabCompleter(executor);
+        StatsImportCommand command = new StatsImportCommand(this);
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> event.registrar().register(
+                "statsimport",
+                "Run and manage the stats import pipeline",
+                List.of(),
+                command
+        ));
     }
 }

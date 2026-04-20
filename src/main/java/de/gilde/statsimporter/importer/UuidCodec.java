@@ -10,6 +10,7 @@ public final class UuidCodec {
     }
 
     public static byte[] toBytes(UUID uuid) {
+        // MySQL BINARY(16) stores UUIDs compactly and indexes better than 36-char text.
         ByteBuffer bb = ByteBuffer.allocate(16);
         bb.putLong(uuid.getMostSignificantBits());
         bb.putLong(uuid.getLeastSignificantBits());
@@ -38,4 +39,3 @@ public final class UuidCodec {
         return UUID.fromString(normalized);
     }
 }
-

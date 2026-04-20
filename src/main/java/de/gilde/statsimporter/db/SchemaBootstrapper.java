@@ -52,6 +52,7 @@ public final class SchemaBootstrapper {
             }
 
             if (settings.verifySchema()) {
+                // Validate again after potential auto-migration so startup fails fast on partial schema states.
                 SchemaValidation validated = validateSchema(connection);
                 if (!validated.missingRequirements().isEmpty()) {
                     throw new IllegalStateException("Schema validation failed. Missing: "
@@ -304,6 +305,7 @@ public final class SchemaBootstrapper {
     private List<String> splitStatements(String sql) {
         List<String> parts = new ArrayList<>();
         StringBuilder current = new StringBuilder();
+        // Tiny SQL splitter: semicolons inside quoted strings must not terminate statements.
         boolean inString = false;
         for (int i = 0; i < sql.length(); i++) {
             char c = sql.charAt(i);

@@ -1,34 +1,63 @@
 import:
+  # Aktiviert den automatischen Import über den Scheduler.
   enabled: true
+  # Intervall für Timer-Imports in Sekunden.
   interval-seconds: 60
+  # Pfad zum Stats-Ordner (auto = automatisch erkennen).
   stats-dir: "auto"
+  # Pfad zu usercache.json (auto = aus Server-Verzeichnis).
   usercache-path: "auto"
+  # Mindest-Spielzeit in Ticks (20 Ticks = 1 Sekunde).
   min-play-ticks: 72000
+  # Anzahl Threads für Berechnung geänderter Spieler.
   worker-threads: 6
+  # Maximale Anzahl gleichzeitiger, noch nicht fertiger Berechnungen.
   max-inflight-calculations: 3000
+  # Batch-Grösse für temporär "gesehen"-UUIDs.
   flush-seen: 2000
+  # Batch-Grösse für player_profile-Upserts.
   flush-profiles: 2000
+  # Batch-Grösse für geänderte Werte (stats + metrics).
   flush-changed: 800
+  # Ignoriert Hashvergleich bei Timer-Lauf (erzwingt Neuberechnung).
   ignore-hash-on-timer: false
+  # Name des globalen DB-Locks gegen parallele Importe.
   db-lock-name: "mc_stats_import"
+  # Wartezeit auf DB-Lock in Sekunden.
   db-lock-timeout-seconds: 5
+  # Aktiviert die Berechnung des "König"-Rankings.
   king-enabled: true
+  # Metric-ID für die König-Gesamtpunkte.
   king-metric-id: "king"
+  # Punkte für Platz 1, 2, 3 je Metric.
   king-points: [5, 3, 1]
+  # UUIDs, die komplett vom Import ausgeschlossen werden.
   exclude-uuids: []
 
 database:
+  # DB-Host (MariaDB/MySQL).
   host: "127.0.0.1"
+  # DB-Port.
   port: 3306
+  # Datenbankname.
   name: "mg-stats"
+  # Datenbank-Benutzer.
   user: "stats_user"
+  # Datenbank-Passwort.
   password: "change-me"
+  # Maximale Anzahl Verbindungen im Hikari-Pool.
   pool-max-size: 10
+  # Timeout für neue DB-Verbindungen in Millisekunden.
   connection-timeout-ms: 10000
 
 bootstrap:
+  # ührt beim Start automatisch schema.sql aus, falls nötig.
   auto-schema: true
+  # Prüft beim Start, ob benötigte Tabellen/Spalten vorhanden sind.
   verify-schema: true
+  # Importiert metric-seeds, wenn Schema neu/fehlend war.
   seed-on-missing-schema: true
+  # Importiert metric-seeds, wenn metric_def leer ist.
   seed-if-metric-def-empty: true
+  # Seed-Datei (relativ zum Plugin-Ordner oder absoluter Pfad).
   seed-file: "metric-seeds.yml"

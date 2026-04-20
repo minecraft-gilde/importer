@@ -23,6 +23,7 @@ public final class StatsCalculator {
     ) throws IOException {
         byte[] gzip = gzip(canonicalStatsJson);
         List<MetricValueRow> metricRows = new ArrayList<>();
+        // Reuse section maps across multiple sources to avoid repeated map lookups/casts.
         Map<String, Map<String, Object>> sectionCache = new HashMap<>();
 
         for (Map.Entry<String, List<MetricSource>> entry : metricSources.entrySet()) {
@@ -30,6 +31,7 @@ public final class StatsCalculator {
             for (MetricSource source : entry.getValue()) {
                 Map<String, Object> sectionMap = sectionCache.computeIfAbsent(source.section(), section -> section(stats, section));
                 long value = toLong(sectionMap.get(source.mcKey()));
+                // Multiple source keys can contribute to one metric via configurable weights.
                 total += value * source.weight();
             }
             if (total > 0L) {
@@ -71,4 +73,3 @@ public final class StatsCalculator {
         return baos.toByteArray();
     }
 }
-

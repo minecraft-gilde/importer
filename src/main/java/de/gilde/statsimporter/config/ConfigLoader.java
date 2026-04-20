@@ -81,6 +81,7 @@ public final class ConfigLoader {
             points.add(3);
             points.add(1);
         }
+        // Always expose exactly top-3 slots so downstream ranking logic can index safely.
         while (points.size() < 3) {
             points.add(0);
         }
@@ -99,7 +100,7 @@ public final class ConfigLoader {
             try {
                 parsed.add(parseUuidFlexible(value));
             } catch (IllegalArgumentException ignored) {
-                // Invalid UUIDs are ignored to keep startup robust.
+                // Ignore bad entries instead of failing startup for one malformed config value.
             }
         }
         return Collections.unmodifiableList(parsed);
