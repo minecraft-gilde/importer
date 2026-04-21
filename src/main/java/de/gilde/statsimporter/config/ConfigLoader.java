@@ -16,8 +16,8 @@ public final class ConfigLoader {
         PluginSettings.ImportSettings importSettings = new PluginSettings.ImportSettings(
                 config.getBoolean("import.enabled", true),
                 Math.max(1L, config.getLong("import.interval-seconds", 60L)),
-                config.getString("import.stats-dir", "C:/minecraft/world/stats"),
-                config.getString("import.usercache-path", "C:/minecraft/usercache.json"),
+                config.getString("import.stats-dir", "auto"),
+                config.getString("import.usercache-path", "auto"),
                 Math.max(0, config.getInt("import.min-play-ticks", 72000)),
                 Math.max(1, config.getInt("import.worker-threads", 6)),
                 Math.max(10, config.getInt("import.max-inflight-calculations", 3000)),

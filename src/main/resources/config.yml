@@ -33,13 +33,13 @@ import:
   king-points: [5, 3, 1]
   # UUIDs, die komplett vom Import ausgeschlossen werden.
   exclude-uuids: []
-  # Optionaler Mojang-Resolver fuer fehlende/veraltete Namen.
+  # Optionaler Mojang-Resolver für fehlende/veraltete Namen.
   name-resolver:
     # Aktiviert den Resolver nach jedem erfolgreichen Importlauf.
     enabled: true
-    # Maximal aufgeloeste Spieler pro Lauf.
+    # Maximal aufgelöste Spieler pro Lauf.
     max-per-run: 1500
-    # Erneut pruefen, wenn letzter Check aelter als X Tage ist (0 = nur fehlende/fallback Namen).
+    # Erneut prüfen, wenn letzter Check älter als X Tage ist (0 = nur fehlende/fallback Namen).
     refresh-days: 30
     # Pause zwischen Mojang-Requests in Millisekunden.
     sleep-ms: 150
@@ -65,7 +65,7 @@ database:
   connection-timeout-ms: 10000
 
 bootstrap:
-  # ührt beim Start automatisch schema.sql aus, falls nötig.
+  # führt beim Start automatisch schema.sql aus, falls nötig.
   auto-schema: true
   # Prüft beim Start, ob benötigte Tabellen/Spalten vorhanden sind.
   verify-schema: true

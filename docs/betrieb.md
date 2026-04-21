@@ -53,17 +53,23 @@ Dann beim Start:
 
 ## Commands
 
-Befehl: `/statsimport <run|status|reload>`
+Befehl: `/statsimport run [ignorehash] [dryrun] | status | reload | resolve [max]`
 
 - `/statsimport run`
   - startet sofortigen manuellen Import
 - `/statsimport run ignorehash`
   - startet manuellen Import ohne Hash-Skip (erzwingt Recompute für alle behaltenen Spieler)
+- `/statsimport run dryrun`
+  - führt einen vollständigen Testlauf aus, berechnet Metriken, schreibt aber nichts in die DB
 - `/statsimport status`
   - zeigt Laufstatus, letzten Laufgrund, Zeitpunkte und Counters
 - `/statsimport reload`
   - lädt Konfiguration/Runtime neu
   - wird verweigert, wenn ein Import gerade läuft
+- `/statsimport resolve`
+  - startet nur die Mojang-Namensauflösung für den aktiven Run
+- `/statsimport resolve <max>`
+  - startet Namensauflösung mit einmaligem Limit-Override (nur für diesen Lauf)
 
 Benötigte Permission:
 

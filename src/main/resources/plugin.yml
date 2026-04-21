@@ -7,7 +7,7 @@ author: CFPlusPlus
 commands:
   statsimport:
     description: Run and manage the stats import pipeline
-    usage: /statsimport <run|status|reload>
+    usage: /statsimport run [ignorehash] [dryrun] | status | reload | resolve [max]
     permission: statsimporter.admin
 permissions:
   statsimporter.admin:

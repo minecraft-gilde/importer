@@ -63,8 +63,11 @@ Das Verhalten steuerst du in `bootstrap.*` in der `config.yml`.
 
 - `/statsimport run`
 - `/statsimport run ignorehash`
+- `/statsimport run dryrun`
 - `/statsimport status`
 - `/statsimport reload`
+- `/statsimport resolve`
+- `/statsimport resolve <max>`
 
 ## Datenbank
 

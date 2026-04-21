@@ -101,13 +101,32 @@ public final class ImportCoordinator implements AutoCloseable {
     }
 
     public boolean triggerImport(String reason, boolean ignoreHashOverride) {
+        return triggerImport(reason, ignoreHashOverride, false);
+    }
+
+    public boolean triggerImport(String reason, boolean ignoreHashOverride, boolean dryRun) {
         if (shuttingDown.get()) {
             return false;
         }
         if (!running.compareAndSet(false, true)) {
             return false;
         }
-        CompletableFuture.runAsync(() -> runImport(reason, ignoreHashOverride), importExecutor);
+        CompletableFuture.runAsync(() -> runImport(reason, ignoreHashOverride, dryRun), importExecutor);
+        return true;
+    }
+
+    public boolean triggerNameResolve(String reason) {
+        return triggerNameResolve(reason, null);
+    }
+
+    public boolean triggerNameResolve(String reason, Integer maxPerRunOverride) {
+        if (shuttingDown.get()) {
+            return false;
+        }
+        if (!running.compareAndSet(false, true)) {
+            return false;
+        }
+        CompletableFuture.runAsync(() -> runNameResolveOnly(reason, maxPerRunOverride), importExecutor);
         return true;
     }
 
@@ -132,9 +151,9 @@ public final class ImportCoordinator implements AutoCloseable {
         }
     }
 
-    private void runImport(String reason, boolean ignoreHashOverride) {
+    private void runImport(String reason, boolean ignoreHashOverride, boolean dryRun) {
         Instant startedAt = Instant.now();
-        String message = "OK";
+        String message = dryRun ? "Dry-run OK (no DB writes)" : "OK";
         boolean success = false;
         int processed = 0;
         int kept = 0;
@@ -164,9 +183,15 @@ public final class ImportCoordinator implements AutoCloseable {
                         return;
                     }
 
-                    // We keep one active run_id and update it in place so readers always see one coherent snapshot.
-                    long runId = ensureRunId(connection);
-                    logger.info("Using run_id=" + runId + " (in-place)");
+                    long runId;
+                    if (dryRun) {
+                        runId = requireActiveRunId(connection);
+                        logger.info("Using run_id=" + runId + " (dry-run/read-only)");
+                    } else {
+                        // We keep one active run_id and update it in place so readers always see one coherent snapshot.
+                        runId = ensureRunId(connection);
+                        logger.info("Using run_id=" + runId + " (in-place)");
+                    }
 
                     Map<String, List<MetricSource>> metricSources = loadMetricSources(connection);
                     if (metricSources.isEmpty()) {
@@ -184,7 +209,9 @@ public final class ImportCoordinator implements AutoCloseable {
                             hasNameCheckedAt
                     );
 
-                    recreateTmpSeen(connection);
+                    if (!dryRun) {
+                        recreateTmpSeen(connection);
+                    }
 
                     Set<UUID> excluded = new HashSet<>(settings.excludedUuids());
                     // Buffers batch DB writes to reduce round-trips while still committing regularly.
@@ -230,22 +257,24 @@ public final class ImportCoordinator implements AutoCloseable {
                             }
 
                             kept++;
-                            seenBuffer.add(uuid);
-                            if (seenBuffer.size() >= settings.flushSeen()) {
-                                flushSeen(connection, seenBuffer);
-                            }
+                            if (!dryRun) {
+                                seenBuffer.add(uuid);
+                                if (seenBuffer.size() >= settings.flushSeen()) {
+                                    flushSeen(connection, seenBuffer);
+                                }
 
-                            ProfileRow profileRow = buildProfileRow(
-                                    runId,
-                                    uuid,
-                                    usercacheNames,
-                                    existingProfiles,
-                                    hasNameSource,
-                                    hasNameCheckedAt
-                            );
-                            profileBuffer.add(profileRow);
-                            if (profileBuffer.size() >= settings.flushProfiles()) {
-                                flushProfiles(connection, profileBuffer, hasNameSource, hasNameCheckedAt);
+                                ProfileRow profileRow = buildProfileRow(
+                                        runId,
+                                        uuid,
+                                        usercacheNames,
+                                        existingProfiles,
+                                        hasNameSource,
+                                        hasNameCheckedAt
+                                );
+                                profileBuffer.add(profileRow);
+                                if (profileBuffer.size() >= settings.flushProfiles()) {
+                                    flushProfiles(connection, profileBuffer, hasNameSource, hasNameCheckedAt);
+                                }
                             }
 
                             byte[] canonicalStatsJson = objectMapper.writeValueAsBytes(stats);
@@ -253,12 +282,19 @@ public final class ImportCoordinator implements AutoCloseable {
                             boolean ignoreHash = ignoreHashOverride || ("timer".equals(reason) && settings.ignoreHashOnTimer());
                             // Unchanged players skip expensive recomputation; completed async tasks are still drained.
                             if (!ignoreHash && Arrays.equals(existingHashes.get(uuid), sha1)) {
-                                completed += drainReadyResults(connection, completionService, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer, runId, false);
+                                if (!dryRun) {
+                                    completed += drainReadyResults(connection, completionService, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer, runId, false);
+                                }
                                 continue;
                             }
 
                             changed++;
                             existingHashes.put(uuid, sha1);
+
+                            if (dryRun) {
+                                calculator.compute(uuid, canonicalStatsJson, sha1, stats, metricSources);
+                                continue;
+                            }
 
                             // Acquire before submit to ensure the in-flight cap is respected.
                             inflightSemaphore.acquire();
@@ -276,36 +312,41 @@ public final class ImportCoordinator implements AutoCloseable {
                         }
                     }
 
-                    while (completed < submitted) {
-                        // Final blocking drain: wait until every submitted calculator result was persisted.
-                        completed += drainReadyResults(connection, completionService, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer, runId, true);
-                    }
-
-                    flushSeen(connection, seenBuffer);
-                    flushProfiles(connection, profileBuffer, hasNameSource, hasNameCheckedAt);
-                    flushChangedBatch(connection, runId, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer);
-
-                    // Remove rows for players whose stats file no longer exists in this import pass.
-                    cleanupMissing(connection, runId);
-
-                    if (settings.kingEnabled()) {
-                        recomputeKingPoints(connection, runId, new ArrayList<>(metricSources.keySet()));
-                    }
-
-                    if (settings.nameResolverEnabled()) {
-                        try {
-                            NameResolverResult result = resolveNamesFromMojang(connection, runId, hasNameSource, hasNameCheckedAt);
-                            resolverNote = " | names candidates=" + result.candidates()
-                                    + ", resolved=" + result.resolved()
-                                    + ", failed=" + result.failed()
-                                    + ", skipped=" + result.skipped();
-                        } catch (Exception ex) {
-                            logger.log(Level.WARNING, "Name resolver failed (import data remains committed).", ex);
-                            resolverNote = " | names resolver failed: " + ex.getClass().getSimpleName();
+                    if (!dryRun) {
+                        while (completed < submitted) {
+                            // Final blocking drain: wait until every submitted calculator result was persisted.
+                            completed += drainReadyResults(connection, completionService, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer, runId, true);
                         }
+
+                        flushSeen(connection, seenBuffer);
+                        flushProfiles(connection, profileBuffer, hasNameSource, hasNameCheckedAt);
+                        flushChangedBatch(connection, runId, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer);
+
+                        // Remove rows for players whose stats file no longer exists in this import pass.
+                        cleanupMissing(connection, runId);
+
+                        if (settings.kingEnabled()) {
+                            recomputeKingPoints(connection, runId, new ArrayList<>(metricSources.keySet()));
+                        }
+
+                        if (settings.nameResolverEnabled()) {
+                            try {
+                                NameResolverResult result = resolveNamesFromMojang(connection, runId, hasNameSource, hasNameCheckedAt);
+                                resolverNote = " | names candidates=" + result.candidates()
+                                        + ", resolved=" + result.resolved()
+                                        + ", failed=" + result.failed()
+                                        + ", skipped=" + result.skipped();
+                            } catch (Exception ex) {
+                                logger.log(Level.WARNING, "Name resolver failed (import data remains committed).", ex);
+                                resolverNote = " | names resolver failed: " + ex.getClass().getSimpleName();
+                            }
+                        }
+
+                        touchRun(connection, runId);
+                    } else {
+                        resolverNote = " | dry-run: skipped write/cleanup/king/name-resolver";
                     }
 
-                    touchRun(connection, runId);
                     if (!resolverNote.isBlank()) {
                         message = message + resolverNote;
                     }
@@ -346,6 +387,75 @@ public final class ImportCoordinator implements AutoCloseable {
                     + ", processed=" + processed
                     + ", kept=" + kept
                     + ", changed=" + changed
+                    + ", duration=" + summary.durationSeconds() + "s");
+        }
+    }
+
+    private void runNameResolveOnly(String reason, Integer maxPerRunOverride) {
+        Instant startedAt = Instant.now();
+        String message = "OK";
+        boolean success = false;
+        boolean lockAcquired = false;
+
+        try (Connection connection = dataSource.getConnection()) {
+            try {
+                lockAcquired = acquireDbLock(connection, settings.dbLockName(), settings.dbLockTimeoutSeconds());
+                if (!lockAcquired) {
+                    message = "Could not acquire DB lock '" + settings.dbLockName() + "'";
+                    logger.warning(message);
+                    return;
+                }
+
+                long runId = requireActiveRunId(connection);
+                boolean hasNameSource = tableHasColumn(connection, "player_profile", "name_source");
+                boolean hasNameCheckedAt = tableHasColumn(connection, "player_profile", "name_checked_at");
+                NameResolverResult result = resolveNamesFromMojang(
+                        connection,
+                        runId,
+                        hasNameSource,
+                        hasNameCheckedAt,
+                        maxPerRunOverride
+                );
+                int effectiveMax = maxPerRunOverride == null
+                        ? settings.nameResolverMaxPerRun()
+                        : Math.max(1, maxPerRunOverride);
+                message = "Names resolved: candidates=" + result.candidates()
+                        + ", resolved=" + result.resolved()
+                        + ", failed=" + result.failed()
+                        + ", skipped=" + result.skipped()
+                        + ", max=" + effectiveMax;
+                success = true;
+            } finally {
+                if (lockAcquired) {
+                    try {
+                        releaseDbLock(connection, settings.dbLockName());
+                    } catch (SQLException ex) {
+                        logger.log(Level.WARNING, "Could not release DB lock.", ex);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            message = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
+            if (shuttingDown.get()) {
+                logger.log(Level.INFO, "Name resolver stopped due to plugin shutdown: " + message);
+            } else {
+                logger.log(Level.SEVERE, "Name resolver run failed", ex);
+            }
+        } finally {
+            ImportSummary summary = new ImportSummary(
+                    startedAt,
+                    Instant.now(),
+                    success,
+                    reason,
+                    message,
+                    0,
+                    0,
+                    0
+            );
+            lastSummary = summary;
+            running.set(false);
+            logger.info("Name resolver finished. success=" + success
+                    + ", reason=" + reason
                     + ", duration=" + summary.durationSeconds() + "s");
         }
     }
@@ -467,6 +577,20 @@ public final class ImportCoordinator implements AutoCloseable {
         }
         connection.commit();
         return activeRunId;
+    }
+
+    private long requireActiveRunId(Connection connection) throws SQLException {
+        try (PreparedStatement stmt = connection.prepareStatement("SELECT active_run_id FROM site_state WHERE id=1");
+             ResultSet rs = stmt.executeQuery()) {
+            if (!rs.next()) {
+                throw new IllegalStateException("site_state row id=1 missing");
+            }
+            long value = rs.getLong(1);
+            if (rs.wasNull()) {
+                throw new IllegalStateException("No active run_id available. Run a normal import first.");
+            }
+            return value;
+        }
     }
 
     private Map<String, List<MetricSource>> loadMetricSources(Connection connection) throws SQLException {
@@ -953,7 +1077,23 @@ public final class ImportCoordinator implements AutoCloseable {
             boolean hasNameSource,
             boolean hasNameCheckedAt
     ) throws Exception {
-        List<NameCandidate> candidates = loadNameResolverCandidates(connection, runId, hasNameSource, hasNameCheckedAt);
+        return resolveNamesFromMojang(connection, runId, hasNameSource, hasNameCheckedAt, null);
+    }
+
+    private NameResolverResult resolveNamesFromMojang(
+            Connection connection,
+            long runId,
+            boolean hasNameSource,
+            boolean hasNameCheckedAt,
+            Integer maxPerRunOverride
+    ) throws Exception {
+        List<NameCandidate> candidates = loadNameResolverCandidates(
+                connection,
+                runId,
+                hasNameSource,
+                hasNameCheckedAt,
+                maxPerRunOverride
+        );
         if (candidates.isEmpty()) {
             logger.info("Name resolver: no candidates.");
             return new NameResolverResult(0, 0, 0, 0);
@@ -1049,7 +1189,8 @@ public final class ImportCoordinator implements AutoCloseable {
             Connection connection,
             long runId,
             boolean hasNameSource,
-            boolean hasNameCheckedAt
+            boolean hasNameCheckedAt,
+            Integer maxPerRunOverride
     ) throws SQLException {
         String missingExpr = "(name IS NULL OR name='' OR name='Unknown' OR name REGEXP '^[0-9a-f]{12}$')";
         List<String> whereParts = new ArrayList<>();
@@ -1077,13 +1218,16 @@ public final class ImportCoordinator implements AutoCloseable {
                 + " LIMIT ?";
 
         List<NameCandidate> out = new ArrayList<>();
+        int effectiveLimit = maxPerRunOverride == null
+                ? settings.nameResolverMaxPerRun()
+                : Math.max(1, maxPerRunOverride);
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             int idx = 1;
             stmt.setLong(idx++, runId);
             if (applyRefreshWindow) {
                 stmt.setTimestamp(idx++, refreshCutoff);
             }
-            stmt.setInt(idx, settings.nameResolverMaxPerRun());
+            stmt.setInt(idx, effectiveLimit);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     byte[] uuidBytes = rs.getBytes(1);
@@ -1329,7 +1473,8 @@ public final class ImportCoordinator implements AutoCloseable {
         return normalized.isEmpty()
                 || "auto".equals(normalized)
                 || "default".equals(normalized)
-                || "standard".equals(normalized);
+                || "standard".equals(normalized)
+                || "leer".equals(normalized);
     }
 
     private record ProfileRow(
