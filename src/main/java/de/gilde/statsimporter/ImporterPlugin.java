@@ -7,6 +7,7 @@ import de.gilde.statsimporter.db.DatabaseManager;
 import de.gilde.statsimporter.db.SchemaBootstrapper;
 import de.gilde.statsimporter.importer.ImportCoordinator;
 import de.gilde.statsimporter.importer.ImportScheduler;
+import de.gilde.statsimporter.importer.NameMaintenanceScheduler;
 import java.io.File;
 import java.util.List;
 import java.util.logging.Level;
@@ -19,6 +20,7 @@ public final class ImporterPlugin extends JavaPlugin {
     private DatabaseManager databaseManager;
     private ImportCoordinator importCoordinator;
     private ImportScheduler importScheduler;
+    private NameMaintenanceScheduler nameMaintenanceScheduler;
 
     @Override
     public void onEnable() {
@@ -27,6 +29,7 @@ public final class ImporterPlugin extends JavaPlugin {
             bootstrapRuntime();
             registerCommands();
             startSchedulerIfConfigured();
+            startNameMaintenanceIfConfigured();
             getLogger().info("StatsImporter enabled.");
         } catch (Exception ex) {
             getLogger().log(Level.SEVERE, "Could not start plugin runtime", ex);
@@ -49,6 +52,7 @@ public final class ImporterPlugin extends JavaPlugin {
             reloadConfig();
             bootstrapRuntime();
             startSchedulerIfConfigured();
+            startNameMaintenanceIfConfigured();
             return "Konfiguration neu geladen.";
         } catch (Exception ex) {
             getLogger().log(Level.SEVERE, "Reload failed", ex);
@@ -80,15 +84,37 @@ public final class ImporterPlugin extends JavaPlugin {
         }
         importCoordinator = new ImportCoordinator(this, settings, databaseManager.dataSource());
         importScheduler = new ImportScheduler(this, importCoordinator);
+        nameMaintenanceScheduler = new NameMaintenanceScheduler(this, importCoordinator);
     }
 
     private void startSchedulerIfConfigured() {
         if (settings.importSettings().enabled()) {
             importScheduler.start(settings.importSettings().intervalSeconds(), settings.importSettings().ignoreHashOnTimer());
+            getLogger().info("Import scheduler started. interval=" + settings.importSettings().intervalSeconds() + "s");
         }
     }
 
+    private void startNameMaintenanceIfConfigured() {
+        if (!settings.importSettings().nameResolverEnabled()) {
+            return;
+        }
+        if (!settings.importSettings().nameResolverMaintenanceEnabled()) {
+            return;
+        }
+        nameMaintenanceScheduler.start(
+                settings.importSettings().nameResolverMaintenanceIntervalSeconds(),
+                settings.importSettings().nameResolverMaintenanceMaxPerRun()
+        );
+        getLogger().info("Name maintenance scheduler started. interval="
+                + settings.importSettings().nameResolverMaintenanceIntervalSeconds()
+                + "s, max=" + settings.importSettings().nameResolverMaintenanceMaxPerRun());
+    }
+
     private void shutdownRuntime() {
+        if (nameMaintenanceScheduler != null) {
+            nameMaintenanceScheduler.stop();
+            nameMaintenanceScheduler = null;
+        }
         if (importScheduler != null) {
             importScheduler.stop();
             importScheduler = null;

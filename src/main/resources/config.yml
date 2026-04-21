@@ -1,7 +1,7 @@
-import:
-  # Aktiviert den automatischen Import über den Scheduler.
+﻿import:
+  # Aktiviert den automatischen Import ueber den Scheduler.
   enabled: true
-  # Intervall für Timer-Imports in Sekunden.
+  # Intervall fuer Timer-Imports in Sekunden.
   interval-seconds: 60
   # Pfad zum Stats-Ordner (auto = automatisch erkennen).
   stats-dir: "auto"
@@ -9,15 +9,15 @@ import:
   usercache-path: "auto"
   # Mindest-Spielzeit in Ticks (20 Ticks = 1 Sekunde).
   min-play-ticks: 72000
-  # Anzahl Threads für Berechnung geänderter Spieler.
+  # Anzahl Threads fuer Berechnung geaenderter Spieler.
   worker-threads: 6
   # Maximale Anzahl gleichzeitiger, noch nicht fertiger Berechnungen.
   max-inflight-calculations: 3000
-  # Batch-Grösse für temporär "gesehen"-UUIDs.
+  # Batch-Groesse fuer temporaer "gesehen"-UUIDs.
   flush-seen: 2000
-  # Batch-Grösse für player_profile-Upserts.
+  # Batch-Groesse fuer player_profile-Upserts.
   flush-profiles: 2000
-  # Batch-Grösse für geänderte Werte (stats + metrics).
+  # Batch-Groesse fuer geaenderte Werte (stats + metrics).
   flush-changed: 800
   # Ignoriert Hashvergleich bei Timer-Lauf (erzwingt Neuberechnung).
   ignore-hash-on-timer: false
@@ -25,21 +25,31 @@ import:
   db-lock-name: "mc_stats_import"
   # Wartezeit auf DB-Lock in Sekunden.
   db-lock-timeout-seconds: 5
-  # Aktiviert die Berechnung des "König"-Rankings.
+  # Aktiviert die Berechnung des "Koenig"-Rankings.
   king-enabled: true
-  # Metric-ID für die König-Gesamtpunkte.
+  # Metric-ID fuer die Koenig-Gesamtpunkte.
   king-metric-id: "king"
-  # Punkte für Platz 1, 2, 3 je Metric.
+  # Punkte fuer Platz 1, 2, 3 je Metric.
   king-points: [5, 3, 1]
   # UUIDs, die komplett vom Import ausgeschlossen werden.
   exclude-uuids: []
-  # Optionaler Mojang-Resolver für fehlende/veraltete Namen.
+  # Optionaler Mojang-Resolver fuer fehlende/veraltete Namen.
   name-resolver:
-    # Aktiviert den Resolver nach jedem erfolgreichen Importlauf.
+    # Aktiviert den Resolver global.
     enabled: true
-    # Maximal aufgelöste Spieler pro Lauf.
+    # Maximal aufgeloeste Spieler pro manuellem Resolver-Lauf.
     max-per-run: 1500
-    # Erneut prüfen, wenn letzter Check älter als X Tage ist (0 = nur fehlende/fallback Namen).
+    # Resolver direkt nach Importlauf aktivieren/deaktivieren.
+    after-import-enabled: true
+    # Kleines Budget nach Importlauf, damit der Importthread nicht lange blockiert.
+    after-import-max-per-run: 300
+    # Separater Pflege-Worker fuer Namensaufloesung.
+    maintenance-enabled: true
+    # Intervall des Pflege-Workers in Sekunden.
+    maintenance-interval-seconds: 300
+    # Maximal aufgeloeste Spieler pro Pflege-Lauf.
+    maintenance-max-per-run: 500
+    # Erneut pruefen, wenn letzter Check aelter als X Tage ist (0 = nur fehlende/fallback Namen).
     refresh-days: 30
     # Pause zwischen Mojang-Requests in Millisekunden.
     sleep-ms: 150
@@ -61,13 +71,13 @@ database:
   password: "change-me"
   # Maximale Anzahl Verbindungen im Hikari-Pool.
   pool-max-size: 10
-  # Timeout für neue DB-Verbindungen in Millisekunden.
+  # Timeout fuer neue DB-Verbindungen in Millisekunden.
   connection-timeout-ms: 10000
 
 bootstrap:
-  # führt beim Start automatisch schema.sql aus, falls nötig.
+  # Fuehrt beim Start automatisch schema.sql aus, falls noetig.
   auto-schema: true
-  # Prüft beim Start, ob benötigte Tabellen/Spalten vorhanden sind.
+  # Prueft beim Start, ob benoetigte Tabellen/Spalten vorhanden sind.
   verify-schema: true
   # Importiert metric-seeds, wenn Schema neu/fehlend war.
   seed-on-missing-schema: true

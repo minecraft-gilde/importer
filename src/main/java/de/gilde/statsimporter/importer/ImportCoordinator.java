@@ -106,9 +106,11 @@ public final class ImportCoordinator implements AutoCloseable {
 
     public boolean triggerImport(String reason, boolean ignoreHashOverride, boolean dryRun) {
         if (shuttingDown.get()) {
+            logger.fine("Skip import trigger during shutdown. reason=" + reason);
             return false;
         }
         if (!running.compareAndSet(false, true)) {
+            logger.fine("Skip import trigger because another run is active. reason=" + reason);
             return false;
         }
         CompletableFuture.runAsync(() -> runImport(reason, ignoreHashOverride, dryRun), importExecutor);
@@ -121,9 +123,11 @@ public final class ImportCoordinator implements AutoCloseable {
 
     public boolean triggerNameResolve(String reason, Integer maxPerRunOverride) {
         if (shuttingDown.get()) {
+            logger.fine("Skip name-resolve trigger during shutdown. reason=" + reason);
             return false;
         }
         if (!running.compareAndSet(false, true)) {
+            logger.fine("Skip name-resolve trigger because another run is active. reason=" + reason);
             return false;
         }
         CompletableFuture.runAsync(() -> runNameResolveOnly(reason, maxPerRunOverride), importExecutor);
@@ -243,6 +247,13 @@ public final class ImportCoordinator implements AutoCloseable {
                             try {
                                 root = objectMapper.readValue(file.toFile(), MAP_TYPE);
                             } catch (Exception ex) {
+                                if (!dryRun) {
+                                    // Keep existing DB rows for unreadable files until parsing succeeds again.
+                                    seenBuffer.add(uuid);
+                                    if (seenBuffer.size() >= settings.flushSeen()) {
+                                        flushSeen(connection, seenBuffer);
+                                    }
+                                }
                                 logger.log(Level.WARNING, "Cannot parse stats file " + file.getFileName(), ex);
                                 continue;
                             }
@@ -329,17 +340,27 @@ public final class ImportCoordinator implements AutoCloseable {
                             recomputeKingPoints(connection, runId, new ArrayList<>(metricSources.keySet()));
                         }
 
-                        if (settings.nameResolverEnabled()) {
+                        if (settings.nameResolverEnabled() && settings.nameResolverAfterImportEnabled()) {
                             try {
-                                NameResolverResult result = resolveNamesFromMojang(connection, runId, hasNameSource, hasNameCheckedAt);
+                                int maxAfterImport = settings.nameResolverAfterImportMaxPerRun();
+                                NameResolverResult result = resolveNamesFromMojang(
+                                        connection,
+                                        runId,
+                                        hasNameSource,
+                                        hasNameCheckedAt,
+                                        maxAfterImport
+                                );
                                 resolverNote = " | names candidates=" + result.candidates()
                                         + ", resolved=" + result.resolved()
                                         + ", failed=" + result.failed()
-                                        + ", skipped=" + result.skipped();
+                                        + ", skipped=" + result.skipped()
+                                        + ", max=" + maxAfterImport;
                             } catch (Exception ex) {
                                 logger.log(Level.WARNING, "Name resolver failed (import data remains committed).", ex);
                                 resolverNote = " | names resolver failed: " + ex.getClass().getSimpleName();
                             }
+                        } else if (settings.nameResolverEnabled()) {
+                            resolverNote = " | names after-import disabled";
                         }
 
                         touchRun(connection, runId);
@@ -409,6 +430,10 @@ public final class ImportCoordinator implements AutoCloseable {
                 long runId = requireActiveRunId(connection);
                 boolean hasNameSource = tableHasColumn(connection, "player_profile", "name_source");
                 boolean hasNameCheckedAt = tableHasColumn(connection, "player_profile", "name_checked_at");
+                int effectiveMax = maxPerRunOverride == null
+                        ? settings.nameResolverMaxPerRun()
+                        : Math.max(1, maxPerRunOverride);
+                logger.info("Name resolver started: reason=" + reason + ", max=" + effectiveMax);
                 NameResolverResult result = resolveNamesFromMojang(
                         connection,
                         runId,
@@ -416,9 +441,6 @@ public final class ImportCoordinator implements AutoCloseable {
                         hasNameCheckedAt,
                         maxPerRunOverride
                 );
-                int effectiveMax = maxPerRunOverride == null
-                        ? settings.nameResolverMaxPerRun()
-                        : Math.max(1, maxPerRunOverride);
                 message = "Names resolved: candidates=" + result.candidates()
                         + ", resolved=" + result.resolved()
                         + ", failed=" + result.failed()
@@ -1075,15 +1097,6 @@ public final class ImportCoordinator implements AutoCloseable {
             Connection connection,
             long runId,
             boolean hasNameSource,
-            boolean hasNameCheckedAt
-    ) throws Exception {
-        return resolveNamesFromMojang(connection, runId, hasNameSource, hasNameCheckedAt, null);
-    }
-
-    private NameResolverResult resolveNamesFromMojang(
-            Connection connection,
-            long runId,
-            boolean hasNameSource,
             boolean hasNameCheckedAt,
             Integer maxPerRunOverride
     ) throws Exception {
@@ -1193,27 +1206,29 @@ public final class ImportCoordinator implements AutoCloseable {
             Integer maxPerRunOverride
     ) throws SQLException {
         String missingExpr = "(name IS NULL OR name='' OR name='Unknown' OR name REGEXP '^[0-9a-f]{12}$')";
-        List<String> whereParts = new ArrayList<>();
-
-        if (hasNameSource) {
-            whereParts.add("((name_source IN ('fallback','unknown')) OR " + missingExpr + ")");
-        } else {
-            whereParts.add(missingExpr);
-        }
+        String criticalExpr = hasNameSource
+                ? "((name_source IN ('fallback','unknown')) OR " + missingExpr + ")"
+                : missingExpr;
 
         boolean applyRefreshWindow = hasNameCheckedAt && settings.nameResolverRefreshDays() > 0;
         Timestamp refreshCutoff = null;
+        String staleExpr = "FALSE";
         if (applyRefreshWindow) {
             refreshCutoff = Timestamp.from(Instant.now().minus(Duration.ofDays(settings.nameResolverRefreshDays())));
-            whereParts.add("(name_checked_at IS NULL OR name_checked_at < ?)");
+            staleExpr = "(name_checked_at IS NULL OR name_checked_at < ?)";
         }
 
-        String orderBy = hasNameCheckedAt
-                ? " ORDER BY COALESCE(name_checked_at, '1970-01-01'), uuid ASC"
-                : " ORDER BY uuid ASC";
-        String sql = "SELECT uuid FROM player_profile WHERE run_id=? AND ("
-                + String.join(" OR ", whereParts)
-                + ")"
+        String whereExpr = applyRefreshWindow
+                ? "(" + criticalExpr + " OR " + staleExpr + ")"
+                : "(" + criticalExpr + ")";
+        String orderBy = " ORDER BY CASE WHEN " + criticalExpr + " THEN 0 ELSE 1 END";
+        if (hasNameCheckedAt) {
+            orderBy += ", COALESCE(name_checked_at, '1970-01-01'), uuid ASC";
+        } else {
+            orderBy += ", uuid ASC";
+        }
+        String sql = "SELECT uuid FROM player_profile WHERE run_id=? AND "
+                + whereExpr
                 + orderBy
                 + " LIMIT ?";
 
@@ -1329,7 +1344,8 @@ public final class ImportCoordinator implements AutoCloseable {
         if (fromUsercache != null && !fromUsercache.isBlank()) {
             name = trimName(fromUsercache);
             source = "usercache";
-            checkedAt = hasNameCheckedAt ? Timestamp.valueOf(LocalDateTime.now()) : null;
+            PlayerProfileMeta meta = existingProfiles.get(uuid);
+            checkedAt = hasNameCheckedAt && meta != null ? meta.nameCheckedAt() : null;
         } else {
             PlayerProfileMeta meta = existingProfiles.get(uuid);
             if (meta != null && meta.name() != null && !meta.name().isBlank()) {
