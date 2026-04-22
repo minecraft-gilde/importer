@@ -1,2 +1,7 @@
-__pycache__/
-*.py[cod]
+.gradle/
+build/
+out/
+*.iml
+.idea/
+.vscode/
+

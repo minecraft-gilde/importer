@@ -1,0 +1,1081 @@
+﻿metric-definitions:
+  - id: ancient_debris
+    label: "Antiken Schrott abgebaut"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 11
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: animals_bred
+    label: "Tiere gezüchtet"
+    category: "Essen & Farmen"
+    unit: ""
+    sort-order: 70
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: aviate_one_cm
+    label: "Strecke geflogen"
+    category: "Bewegung & Reisen"
+    unit: "km"
+    sort-order: 51
+    enabled: true
+    divisor: 100000
+    decimals: 2
+  - id: bamboo
+    label: "Bambus geerntet"
+    category: "Essen & Farmen"
+    unit: ""
+    sort-order: 10
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: blaze
+    label: "Lohen getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 45
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: boat_one_cm
+    label: "Im Boot gefahrene Strecke"
+    category: "Bewegung & Reisen"
+    unit: "km"
+    sort-order: 16
+    enabled: true
+    divisor: 100000
+    decimals: 2
+  - id: bow
+    label: "Pfeile geschossen"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 31
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: bread
+    label: "Brote gebacken"
+    category: "Essen & Farmen"
+    unit: ""
+    sort-order: 48
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: cake
+    label: "Kuchenstücke gegessen"
+    category: "Essen & Farmen"
+    unit: ""
+    sort-order: 9
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: chorus_flower
+    label: "Chorusblüten gepflanzt"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 37
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: climb_one_cm
+    label: "Gekletterte Strecke"
+    category: "Bewegung & Reisen"
+    unit: "km"
+    sort-order: 15
+    enabled: true
+    divisor: 100000
+    decimals: 2
+  - id: compass
+    label: "Kompasse hergestellt"
+    category: "Alltag & Handel"
+    unit: ""
+    sort-order: 59
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: cooked_beef
+    label: "Fleisch gegessen"
+    category: "Essen & Farmen"
+    unit: ""
+    sort-order: 46
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: cookie
+    label: "Kekse gegessen"
+    category: "Essen & Farmen"
+    unit: ""
+    sort-order: 55
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: copper_ore
+    label: "Kupfererz abgebaut"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 23
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: cow
+    label: "Kühe getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 54
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: craft_beacon
+    label: "Beacons hergestellt"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 12
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: creeper
+    label: "Creeper getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 36
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: crouch_one_cm
+    label: "Geschlichene Strecke"
+    category: "Bewegung & Reisen"
+    unit: "km"
+    sort-order: 17
+    enabled: true
+    divisor: 100000
+    decimals: 2
+  - id: damage_absorbed
+    label: "Schaden aufgenommen"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 35
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: damage_dealt
+    label: "Schaden verursacht"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 29
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: deaths
+    label: "Tode"
+    category: "Aktivität"
+    unit: ""
+    sort-order: 2
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: diamond_ore
+    label: "Diamanterz abgebaut"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 6
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: dirt
+    label: "Erde platziert"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 22
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: distance
+    label: "Zurückgelegte Strecke"
+    category: "Bewegung & Reisen"
+    unit: "km"
+    sort-order: 4
+    enabled: true
+    divisor: 100000
+    decimals: 2
+  - id: dolphin
+    label: "Delfine getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 38
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: drink_milk
+    label: "Milch getrunken"
+    category: "Alltag & Handel"
+    unit: ""
+    sort-order: 20
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: drop
+    label: "Fallengelassene Gegenstände"
+    category: "Alltag & Handel"
+    unit: ""
+    sort-order: 18
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: dry_sponge
+    label: "Schwämme getrocknet"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 19
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: egg
+    label: "Eier geworfen"
+    category: "Essen & Farmen"
+    unit: ""
+    sort-order: 44
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: emerald_ore
+    label: "Smaragderz abgebaut"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 28
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: enchant_item
+    label: "Items verzaubert"
+    category: "Alltag & Handel"
+    unit: ""
+    sort-order: 72
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: ender_dragon
+    label: "Enderdrachen getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 40
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: firework_rocket
+    label: "Feuerwerke gezündet"
+    category: "Spaß & Events"
+    unit: ""
+    sort-order: 50
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: fished
+    label: "Gefischte Fische"
+    category: "Essen & Farmen"
+    unit: ""
+    sort-order: 14
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: goat_horn
+    label: "Bockshörner geblasen"
+    category: "Spaß & Events"
+    unit: ""
+    sort-order: 47
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: golderz_ore
+    label: "Golderz abgebaut"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 52
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: hopper
+    label: "Trichter platziert"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 49
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: horse_one_cm
+    label: "Strecke geritten"
+    category: "Bewegung & Reisen"
+    unit: "km"
+    sort-order: 63
+    enabled: true
+    divisor: 100000
+    decimals: 2
+  - id: hours
+    label: "Spielstunden"
+    category: "Aktivität"
+    unit: "h"
+    sort-order: 1
+    enabled: true
+    divisor: 72000
+    decimals: 2
+  - id: ice
+    label: "Eis zerstört"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 42
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: interact_with_anvil
+    label: "Amboss benutzt"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 73
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: jump
+    label: "Sprünge"
+    category: "Bewegung & Reisen"
+    unit: ""
+    sort-order: 5
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: kills
+    label: "Spieler-Kills"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 3
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: king
+    label: "Server-König"
+    category: "Bestenliste"
+    unit: "Punkte"
+    sort-order: 0
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: lodestone
+    label: "Leitsteine platziert"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 56
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: minecart_one_cm
+    label: "Im Minecart gefahrene Strecke"
+    category: "Bewegung & Reisen"
+    unit: "km"
+    sort-order: 68
+    enabled: true
+    divisor: 100000
+    decimals: 1
+  - id: mob_kills
+    label: "Mobs getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 7
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: open_chest
+    label: "Truhen geöffnet"
+    category: "Alltag & Handel"
+    unit: ""
+    sort-order: 21
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: phantom
+    label: "Phantome getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 61
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: polar_bear
+    label: "Eisbären getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 41
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: potion
+    label: "Tränke getrunken"
+    category: "Alltag & Handel"
+    unit: ""
+    sort-order: 24
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: raid_trigger
+    label: "Überfälle ausgelöst"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 34
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: raid_win
+    label: "Überfälle gewonnen"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 71
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: rail
+    label: "Schienen platziert"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 39
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: resin_block
+    label: "Harzblöcke abgebaut"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 13
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: scaffolding
+    label: "Gerüste platziert"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 30
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: sheep
+    label: "Schafe getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 33
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: shulker
+    label: "Shulker getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 32
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: silverfish
+    label: "Silberfische getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 58
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: sleep_in_bed
+    label: "Im Bett geschlafen"
+    category: "Aktivität"
+    unit: ""
+    sort-order: 64
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: spider
+    label: "Spinnen getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 25
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: sprint_one_cm
+    label: "Strecke gerannt"
+    category: "Bewegung & Reisen"
+    unit: "km"
+    sort-order: 57
+    enabled: true
+    divisor: 100000
+    decimals: 2
+  - id: strider_one_cm
+    label: "Auf Strider gerittene Strecke"
+    category: "Bewegung & Reisen"
+    unit: "km"
+    sort-order: 69
+    enabled: true
+    divisor: 100000
+    decimals: 1
+  - id: string
+    label: "Spinnennetze entfernt"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 26
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: sweet_berries
+    label: "Beeren gesammelt"
+    category: "Essen & Farmen"
+    unit: ""
+    sort-order: 27
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: swim_one_cm
+    label: "Strecke geschwommen"
+    category: "Bewegung & Reisen"
+    unit: "km"
+    sort-order: 67
+    enabled: true
+    divisor: 100000
+    decimals: 1
+  - id: time_since_death_h
+    label: "Überlebenszeit seit letztem Tod"
+    category: "Aktivität"
+    unit: "h"
+    sort-order: 65
+    enabled: true
+    divisor: 72000
+    decimals: 1
+  - id: time_since_rest_h
+    label: "Wachzeit seit letztem Schlaf"
+    category: "Aktivität"
+    unit: "h"
+    sort-order: 66
+    enabled: true
+    divisor: 72000
+    decimals: 1
+  - id: torch
+    label: "Fackeln platziert"
+    category: "Bauen & Technik"
+    unit: ""
+    sort-order: 43
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: totem_of_undying
+    label: "Totems benutzt"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 8
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: traded_with_villager
+    label: "Handel mit Dorfbewohnern"
+    category: "Alltag & Handel"
+    unit: ""
+    sort-order: 53
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: warden
+    label: "Tode durch Warden"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 62
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: zombified_piglin
+    label: "Piglins getötet"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 60
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: wither
+    label: "Wither besiegt"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 74
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: warden_killed
+    label: "Warden besiegt"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 75
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: elder_guardian
+    label: "Großer Wächter besiegt"
+    category: "Kampf & Kreaturen"
+    unit: ""
+    sort-order: 76
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: wither_skeleton_skull
+    label: "Witherskelettschädel gesammelt"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 77
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: shulker_shell
+    label: "Shulker-Schalen gesammelt"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 78
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: trident
+    label: "Dreizack gefunden"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 79
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: dragon_breath
+    label: "Drachenatem gesammelt"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 80
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: amethyst_cluster
+    label: "Amethysthaufen abgebaut"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 81
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: nether_star
+    label: "Netherstern gesammelt"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 82
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: elytra
+    label: "Elytren gefunden"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 83
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: echo_shard
+    label: "Echoscherbe gesammelt"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 84
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: dragon_head
+    label: "Drachenkopf gefunden"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 85
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: netherite_upgrade_smithing_template
+    label: "Schmiedevorlage: Netheritaufwertung gesammelt"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 86
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: enchanted_golden_apple
+    label: "Verzauberten goldenen Apfel gegessen"
+    category: "Essen & Farmen"
+    unit: ""
+    sort-order: 87
+    enabled: true
+    divisor: 1
+    decimals: 0
+  - id: silence_armor_trim_smithing_template
+    label: "Schmiedevorlage: Stille gesammelt"
+    category: "Mining & Ressourcen"
+    unit: ""
+    sort-order: 88
+    enabled: true
+    divisor: 1
+    decimals: 0
+
+metric-sources:
+  - metric-id: ancient_debris
+    section: "minecraft:mined"
+    mc-key: "minecraft:ancient_debris"
+    weight: 1
+  - metric-id: animals_bred
+    section: "minecraft:custom"
+    mc-key: "minecraft:animals_bred"
+    weight: 1
+  - metric-id: aviate_one_cm
+    section: "minecraft:custom"
+    mc-key: "minecraft:aviate_one_cm"
+    weight: 1
+  - metric-id: bamboo
+    section: "minecraft:mined"
+    mc-key: "minecraft:bamboo"
+    weight: 1
+  - metric-id: blaze
+    section: "minecraft:killed"
+    mc-key: "minecraft:blaze"
+    weight: 1
+  - metric-id: boat_one_cm
+    section: "minecraft:custom"
+    mc-key: "minecraft:boat_one_cm"
+    weight: 1
+  - metric-id: bow
+    section: "minecraft:used"
+    mc-key: "minecraft:bow"
+    weight: 1
+  - metric-id: bread
+    section: "minecraft:crafted"
+    mc-key: "minecraft:bread"
+    weight: 1
+  - metric-id: cake
+    section: "minecraft:custom"
+    mc-key: "minecraft:eat_cake_slice"
+    weight: 1
+  - metric-id: chorus_flower
+    section: "minecraft:used"
+    mc-key: "minecraft:chorus_flower"
+    weight: 1
+  - metric-id: climb_one_cm
+    section: "minecraft:custom"
+    mc-key: "minecraft:climb_one_cm"
+    weight: 1
+  - metric-id: compass
+    section: "minecraft:crafted"
+    mc-key: "minecraft:compass"
+    weight: 1
+  - metric-id: cooked_beef
+    section: "minecraft:used"
+    mc-key: "minecraft:cooked_beef"
+    weight: 1
+  - metric-id: cookie
+    section: "minecraft:used"
+    mc-key: "minecraft:cookie"
+    weight: 1
+  - metric-id: copper_ore
+    section: "minecraft:mined"
+    mc-key: "minecraft:copper_ore"
+    weight: 1
+  - metric-id: cow
+    section: "minecraft:killed"
+    mc-key: "minecraft:cow"
+    weight: 1
+  - metric-id: craft_beacon
+    section: "minecraft:crafted"
+    mc-key: "minecraft:beacon"
+    weight: 1
+  - metric-id: creeper
+    section: "minecraft:killed"
+    mc-key: "minecraft:creeper"
+    weight: 1
+  - metric-id: crouch_one_cm
+    section: "minecraft:custom"
+    mc-key: "minecraft:crouch_one_cm"
+    weight: 1
+  - metric-id: damage_absorbed
+    section: "minecraft:custom"
+    mc-key: "minecraft:damage_absorbed"
+    weight: 1
+  - metric-id: damage_dealt
+    section: "minecraft:custom"
+    mc-key: "minecraft:damage_dealt"
+    weight: 1
+  - metric-id: deaths
+    section: "minecraft:custom"
+    mc-key: "minecraft:deaths"
+    weight: 1
+  - metric-id: diamond_ore
+    section: "minecraft:mined"
+    mc-key: "minecraft:deepslate_diamond_ore"
+    weight: 1
+  - metric-id: diamond_ore
+    section: "minecraft:mined"
+    mc-key: "minecraft:diamond_ore"
+    weight: 1
+  - metric-id: dirt
+    section: "minecraft:used"
+    mc-key: "minecraft:dirt"
+    weight: 1
+  - metric-id: distance
+    section: "minecraft:custom"
+    mc-key: "minecraft:walk_one_cm"
+    weight: 1
+  - metric-id: dolphin
+    section: "minecraft:killed"
+    mc-key: "minecraft:dolphin"
+    weight: 1
+  - metric-id: drink_milk
+    section: "minecraft:used"
+    mc-key: "minecraft:milk_bucket"
+    weight: 1
+  - metric-id: drop
+    section: "minecraft:custom"
+    mc-key: "minecraft:drop"
+    weight: 1
+  - metric-id: dry_sponge
+    section: "minecraft:mined"
+    mc-key: "minecraft:sponge"
+    weight: 1
+  - metric-id: egg
+    section: "minecraft:used"
+    mc-key: "minecraft:egg"
+    weight: 1
+  - metric-id: emerald_ore
+    section: "minecraft:mined"
+    mc-key: "minecraft:emerald_ore"
+    weight: 1
+  - metric-id: enchant_item
+    section: "minecraft:custom"
+    mc-key: "minecraft:enchant_item"
+    weight: 1
+  - metric-id: ender_dragon
+    section: "minecraft:killed"
+    mc-key: "minecraft:ender_dragon"
+    weight: 1
+  - metric-id: firework_rocket
+    section: "minecraft:used"
+    mc-key: "minecraft:firework_rocket"
+    weight: 1
+  - metric-id: fished
+    section: "minecraft:custom"
+    mc-key: "minecraft:fish_caught"
+    weight: 1
+  - metric-id: goat_horn
+    section: "minecraft:used"
+    mc-key: "minecraft:goat_horn"
+    weight: 1
+  - metric-id: golderz_ore
+    section: "minecraft:mined"
+    mc-key: "minecraft:deepslate_gold_ore"
+    weight: 1
+  - metric-id: golderz_ore
+    section: "minecraft:mined"
+    mc-key: "minecraft:gold_ore"
+    weight: 1
+  - metric-id: golderz_ore
+    section: "minecraft:mined"
+    mc-key: "minecraft:nether_gold_ore"
+    weight: 1
+  - metric-id: hopper
+    section: "minecraft:used"
+    mc-key: "minecraft:hopper"
+    weight: 1
+  - metric-id: horse_one_cm
+    section: "minecraft:custom"
+    mc-key: "minecraft:horse_one_cm"
+    weight: 1
+  - metric-id: hours
+    section: "minecraft:custom"
+    mc-key: "minecraft:play_time"
+    weight: 1
+  - metric-id: ice
+    section: "minecraft:mined"
+    mc-key: "minecraft:ice"
+    weight: 1
+  - metric-id: interact_with_anvil
+    section: "minecraft:custom"
+    mc-key: "minecraft:interact_with_anvil"
+    weight: 1
+  - metric-id: jump
+    section: "minecraft:custom"
+    mc-key: "minecraft:jump"
+    weight: 1
+  - metric-id: kills
+    section: "minecraft:custom"
+    mc-key: "minecraft:player_kills"
+    weight: 1
+  - metric-id: lodestone
+    section: "minecraft:used"
+    mc-key: "minecraft:lodestone"
+    weight: 1
+  - metric-id: minecart_one_cm
+    section: "minecraft:custom"
+    mc-key: "minecraft:minecart_one_cm"
+    weight: 1
+  - metric-id: mob_kills
+    section: "minecraft:custom"
+    mc-key: "minecraft:mob_kills"
+    weight: 1
+  - metric-id: open_chest
+    section: "minecraft:custom"
+    mc-key: "minecraft:open_chest"
+    weight: 1
+  - metric-id: phantom
+    section: "minecraft:killed"
+    mc-key: "minecraft:phantom"
+    weight: 1
+  - metric-id: polar_bear
+    section: "minecraft:killed"
+    mc-key: "minecraft:polar_bear"
+    weight: 1
+  - metric-id: potion
+    section: "minecraft:used"
+    mc-key: "minecraft:potion"
+    weight: 1
+  - metric-id: raid_trigger
+    section: "minecraft:custom"
+    mc-key: "minecraft:raid_trigger"
+    weight: 1
+  - metric-id: raid_win
+    section: "minecraft:custom"
+    mc-key: "minecraft:raid_win"
+    weight: 1
+  - metric-id: rail
+    section: "minecraft:used"
+    mc-key: "minecraft:rail"
+    weight: 1
+  - metric-id: resin_block
+    section: "minecraft:mined"
+    mc-key: "minecraft:resin_block"
+    weight: 1
+  - metric-id: scaffolding
+    section: "minecraft:used"
+    mc-key: "minecraft:scaffolding"
+    weight: 1
+  - metric-id: sheep
+    section: "minecraft:killed"
+    mc-key: "minecraft:sheep"
+    weight: 1
+  - metric-id: shulker
+    section: "minecraft:killed"
+    mc-key: "minecraft:shulker"
+    weight: 1
+  - metric-id: silverfish
+    section: "minecraft:killed"
+    mc-key: "minecraft:silverfish"
+    weight: 1
+  - metric-id: sleep_in_bed
+    section: "minecraft:custom"
+    mc-key: "minecraft:sleep_in_bed"
+    weight: 1
+  - metric-id: spider
+    section: "minecraft:killed"
+    mc-key: "minecraft:spider"
+    weight: 1
+  - metric-id: sprint_one_cm
+    section: "minecraft:custom"
+    mc-key: "minecraft:sprint_one_cm"
+    weight: 1
+  - metric-id: strider_one_cm
+    section: "minecraft:custom"
+    mc-key: "minecraft:strider_one_cm"
+    weight: 1
+  - metric-id: string
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:string"
+    weight: 1
+  - metric-id: sweet_berries
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:sweet_berries"
+    weight: 1
+  - metric-id: swim_one_cm
+    section: "minecraft:custom"
+    mc-key: "minecraft:swim_one_cm"
+    weight: 1
+  - metric-id: time_since_death_h
+    section: "minecraft:custom"
+    mc-key: "minecraft:time_since_death"
+    weight: 1
+  - metric-id: time_since_rest_h
+    section: "minecraft:custom"
+    mc-key: "minecraft:time_since_rest"
+    weight: 1
+  - metric-id: torch
+    section: "minecraft:used"
+    mc-key: "minecraft:torch"
+    weight: 1
+  - metric-id: totem_of_undying
+    section: "minecraft:used"
+    mc-key: "minecraft:totem_of_undying"
+    weight: 1
+  - metric-id: traded_with_villager
+    section: "minecraft:custom"
+    mc-key: "minecraft:traded_with_villager"
+    weight: 1
+  - metric-id: warden
+    section: "minecraft:killed_by"
+    mc-key: "minecraft:warden"
+    weight: 1
+  - metric-id: zombified_piglin
+    section: "minecraft:killed"
+    mc-key: "minecraft:zombified_piglin"
+    weight: 1
+  - metric-id: wither
+    section: "minecraft:killed"
+    mc-key: "minecraft:wither"
+    weight: 1
+  - metric-id: warden_killed
+    section: "minecraft:killed"
+    mc-key: "minecraft:warden"
+    weight: 1
+  - metric-id: elder_guardian
+    section: "minecraft:killed"
+    mc-key: "minecraft:elder_guardian"
+    weight: 1
+  - metric-id: wither_skeleton_skull
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:wither_skeleton_skull"
+    weight: 1
+  - metric-id: shulker_shell
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:shulker_shell"
+    weight: 1
+  - metric-id: trident
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:trident"
+    weight: 1
+  - metric-id: dragon_breath
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:dragon_breath"
+    weight: 1
+  - metric-id: amethyst_cluster
+    section: "minecraft:mined"
+    mc-key: "minecraft:amethyst_cluster"
+    weight: 1
+  - metric-id: nether_star
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:nether_star"
+    weight: 1
+  - metric-id: elytra
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:elytra"
+    weight: 1
+  - metric-id: echo_shard
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:echo_shard"
+    weight: 1
+  - metric-id: dragon_head
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:dragon_head"
+    weight: 1
+  - metric-id: netherite_upgrade_smithing_template
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:netherite_upgrade_smithing_template"
+    weight: 1
+  - metric-id: enchanted_golden_apple
+    section: "minecraft:used"
+    mc-key: "minecraft:enchanted_golden_apple"
+    weight: 1
+  - metric-id: silence_armor_trim_smithing_template
+    section: "minecraft:picked_up"
+    mc-key: "minecraft:silence_armor_trim_smithing_template"
+    weight: 1
+
+

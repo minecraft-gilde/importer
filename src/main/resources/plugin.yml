@@ -1,0 +1,14 @@
+name: StatsImporter
+main: de.gilde.statsimporter.ImporterPlugin
+version: ${version}
+api-version: "1.21"
+folia-supported: true
+author: CFPlusPlus
+commands:
+  statsimport:
+    description: Run and manage the stats import pipeline
+    usage: /statsimport run [ignorehash] [dryrun] | status | reload | resolve [max]
+    permission: statsimporter.admin
+permissions:
+  statsimporter.admin:
+    default: op

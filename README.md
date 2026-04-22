@@ -1,198 +1,68 @@
-# minecraft-gilde-importer
+﻿# Stats Importer Plugin (Paper/Folia)
 
-Importer/ETL für **Minecraft Gilde** (Minecraft-Gilde.de): liest Vanilla-Stats aus dem Minecraft-World-Ordner und schreibt daraus **materialisierte Leaderboards** + **Spieler-Stats** in eine MariaDB/MySQL.
+Dieses Repository enthält ein Java-Plugin für den Import von Minecraft-Stats auf Paper/Folia.
 
-Wichtige Bestandteile im Repo sind:
+## Dokumentation
 
-- `run_import.sh` – Wrapper/Runner: konfiguriert Pfade + DB-Env und führt Import + Name-Resolver aus
-- `importer_streaming.py` – Hauptimport (Stats -> DB)
-- `resolve_names.py` – Hintergrundjob: Spielernamen via Mojang-Endpoints nachpflegen/aktualisieren
-- `db/schema.sql` – Datenbankschema inklusive Views und initialer Metric-Seeds
-- `db/sample-data.sql` – synthetische Beispieldaten für lokale Entwicklung und Tests
-- `db/README.md` – Dokumentation zum DB-Aufbau, Einspielen und zur Struktur
+Die ausführliche Projektdokumentation liegt unter:
 
-## Projektstruktur
+- [docs/README.md](docs/README.md)
 
-```text
-.
-├── db
-│   ├── README.md
-│   ├── sample-data.sql
-│   └── schema.sql
-├── importer_streaming.py
-├── resolve_names.py
-├── run_import.sh
-└── README.md
-```
-
----
-
-## Was wird importiert?
-
-- `world/stats/<uuid>.json` (Vanilla Stats pro Spieler)
-- `usercache.json` (Primäre Quelle für UUID -> Name)
-
-Filter:
-- Es werden nur Spieler übernommen, deren `minecraft:custom.minecraft:play_time` >= `MIN_PLAY_TICKS` ist (Default: `72000` = ca. 1h).
-- Optional können UUIDs ausgeschlossen werden.
-
----
-
-## Was wird in die DB geschrieben?
-
-Der Importer schreibt/aktualisiert (in-place) u. a.:
-
-- `player_profile` – Anzeige/Suche (`name`, `name_lc`, optional `name_source`, `name_checked_at`, `last_seen`)
-- `player_stats` – gesamtes Stats-JSON pro Spieler, **gzip-komprimiert** (`stats_gzip`) + SHA1 für Change-Detection (`stats_sha1`)
-- `metric_value` – materialisierte Werte pro Metrik fuer Leaderboards
-- `site_state` / `import_run` – Verwaltung eines aktiven `run_id` (in-place)
-- optional `metric_award` – Top3 pro Metrik
-
-Spezialfall:
-- **Server-König**: pro aktivierter Metrik werden Top1/2/3 Punkte vergeben (Default `5,3,1`) und als eigene Metrik `king` in `metric_value` gespeichert.
-
----
-
-## Eigenschaften
-
-- **Streaming/Batched Writes**: keine Voll-Ladung aller Spieler in RAM
-- **Hash-skip**: unveränderte Spieler werden nicht neu geschrieben und ihre Metriken nicht neu berechnet
-- **Cleanup**: Spieler, die nicht mehr im Stats-Ordner sind (oder unter Threshold fallen), werden aus `player_profile`, `player_stats`, `metric_value` entfernt
-- **DB Advisory Lock** (MariaDB `GET_LOCK`): verhindert parallele Imports
-- **Name-Priorität** beim Import:
-  1) `usercache.json`
-  2) letzter Name aus DB (falls `usercache` unvollständig)
-  3) stabiler Fallback (UUID-Hash)
-- **Name-Resolver** kann Namen nachpflegen und periodisch refreshen (rate-limited)
-
----
-
-## Voraussetzungen
-
-- Python **3.9+**
-- MariaDB **10.11+** (oder kompatibles MySQL)
-- Python Dependency: `pymysql`
-- Dateizugriff auf den Minecraft-Ordner (`world/stats`) und `usercache.json`
-- Outbound HTTPS (nur für `resolve_names.py`, Mojang Endpoints)
-
----
-
-## Installation
+## Build
 
 ```bash
-apt update
-apt upgrade
-apt install python3-pymysql
+./gradlew build
 ```
 
----
+Windows PowerShell:
+
+```powershell
+.\gradlew.bat build
+```
+
+Ergebnis-JAR:
+
+- `build/libs/stats-importer-plugin-1.0.0.jar`
 
 ## Konfiguration
 
-### DB-Credentials (env)
-Beide Python-Skripte lesen die DB-Zugangsdaten bevorzugt aus Umgebungsvariablen:
+Die gesamte Laufzeitkonfiguration liegt in:
 
-- `STATS_DB_HOST`
-- `STATS_DB_PORT` (Default `3306`)
-- `STATS_DB_NAME`
-- `STATS_DB_USER`
-- `STATS_DB_PASS`
+- `src/main/resources/config.yml`
+- `src/main/resources/metric-seeds.yml` (Seeds für `metric_def` und `metric_source`)
 
-Alternativ können sie auch per CLI übergeben werden (`--db-host`, `--db-name`, ...).
+Wichtig:
 
-### Runner `run_import.sh`
-Im Script stellt man ein:
+- `import.interval-seconds`: Auto-Import-Intervall in Sekunden
+- `import.stats-dir`: `auto` nutzt den Standardpfad des Servers (`<world>/stats`)
+- `import.usercache-path`: `auto` nutzt `<server-root>/usercache.json`
+- `import.banned-players-path`: `auto` nutzt `<server-root>/banned-players.json`
+- `import.worker-threads`: Anzahl paralleler Threads für die Stat-Berechnung
+- `import.max-inflight-calculations`: Begrenzung für gleichzeitig ausstehende Berechnungen
+- `database.*`: MariaDB-Zugangsdaten
+- `bootstrap.*`: Schema-Check/Create und Seed-Import beim Plugin-Start
 
-- `STATS_DIR` – Pfad zu `world/stats`
-- `USERCACHE_JSON` – Pfad zu `usercache.json`
-- `LOG_FILE` – Log-Datei (Importer schreibt aktiv dorthin, Resolver appended)
-- `MIN_PLAY_TICKS` – Mindestspielzeit in Ticks
-- `IGNORE_HASH` – `1/true/yes` setzt `--ignore-hash` (erzwingt Neuberechnung aller behaltenen Spieler)
-- `EXCLUDES` – Liste ausgeschlossener UUIDs
-- Resolver-Tuning: `NAME_REFRESH_DAYS`, `NAME_MAX_PER_RUN`, `NAME_SLEEP_MS`
+## DB-Bootstrap beim Start
 
+Das Plugin kann beim Start automatisch:
 
----
+1. Schema validieren
+2. Fehlende Tabellen/Views anlegen (`db/schema.sql`)
+3. Seeds aus `metric-seeds.yml` importieren (Upsert)
 
-## Ausführen
+Das Verhalten steuerst du in `bootstrap.*` in der `config.yml`.
 
-### Empfohlen: alles über `run_import.sh`
+## Commands
 
-```bash
-chmod +x run_import.sh
-./run_import.sh
-```
+- `/statsimport run`
+- `/statsimport run ignorehash`
+- `/statsimport run dryrun`
+- `/statsimport status`
+- `/statsimport reload`
+- `/statsimport resolve`
+- `/statsimport resolve <max>`
 
-Der Runner macht:
-1) Import stats -> DB
-2) Name-Backfill/Refresh (Output wird ans gleiche Log angehängt)
+## Datenbank
 
-### Direkt: Importer
-
-```bash
-python3 importer_streaming.py \
-  --stats-dir /pfad/zur/world/stats \
-  --usercache /pfad/zur/usercache.json \
-  --min-play-ticks 72000 \
-  --log-file /var/log/minecraft/statistik/importer.log
-```
-
-Nützliche Optionen:
-- `--exclude-uuid <uuid>` (repeatable)
-- `--dry-run` (parsen + rechnen, aber nichts in DB schreiben)
-- `--ignore-hash` (Hash-Skip deaktivieren; alle behaltenen Spieler neu berechnen/schreiben)
-- `--lock-name mc_stats_import` / `--lock-timeout 5`
-- `--no-king` oder `--king-points 5,3,1`
-- Flush-Tuning: `--flush-seen`, `--flush-profiles`, `--flush-changed`
-
-### Direkt: Name Resolver
-
-```bash
-python3 resolve_names.py \
-  --refresh-days 30 \
-  --max-per-run 1500 \
-  --sleep-ms 150
-```
-
-Hinweise:
-- Default `run_id` ist `site_state.active_run_id`.
-- Nutzt Mojang Sessionserver + Name-History Endpoint.
-- Setzt (falls Spalten existieren) `name_source='mojang'` und `name_checked_at=NOW()`.
-
----
-
-## Scheduling (cron Beispiel)
-
-Alle 10 Minuten (Importer + Resolver), Log via Script:
-
-```cron
-*/10 * * * * /opt/minecraft-gilde-importer/run_import.sh
-```
-
----
-
-## Datenbank-Erwartungen (Schema-Interface)
-
-Der Importer erwartet (mindestens) folgende Tabellen/Views:
-
-- `site_state` (id=1, `active_run_id`)
-- `import_run` (`id`, `generated_at`, `status`)
-- `metric_def` (u. a. `id`, `enabled`, `sort_order` ...)
-- `metric_source` (`metric_id`, `section`, `mc_key`, `weight`)
-- `player_profile` (`run_id`, `uuid`, `name`, `name_lc`, `last_seen`, optional `name_source`, `name_checked_at`)
-- `player_stats` (`run_id`, `uuid`, `stats_gzip`, `stats_sha1`, `updated_at`)
-- `metric_value` (`run_id`, `metric_id`, `uuid`, `value`)
-- optional `metric_award` (Top3 pro Metrik; wird nur genutzt, wenn die Tabelle existiert)
-
-Wenn keine aktivierten Metriken existieren, bricht der Importer ab mit:
-`No enabled metrics found. Did you seed metric_def + metric_source?`
-
----
-
-## Troubleshooting
-
-- **"DB config missing"**: Env `STATS_DB_HOST/USER/NAME` (und ggf. PASS) setzen oder CLI-Args nutzen.
-- **"Could not acquire DB lock"**: Ein anderer Import läuft bereits. Timeout erhöhen oder Frequenz senken.
-- **"stats-dir not found"**: Pfad zu `world/stats` prüfen.
-- **Namen bleiben Fallback**: `resolve_names.py` benötigt outbound HTTPS; ggf. Rate-Limit hoch/runter drehen (`--sleep-ms`).
+Das Plugin erwartet weiterhin das bestehende MariaDB-Schema (inkl. `metric_def`, `metric_source`, `site_state`, `import_run`, `player_profile`, `player_known`, `player_ban`, `player_stats`, `metric_value` und optional `metric_award`).
 
