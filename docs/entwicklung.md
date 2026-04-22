@@ -97,9 +97,5 @@ Aendere nie alle Regler gleichzeitig, damit Ursache und Wirkung erkennbar bleibe
 - Wird "king" korrekt gebildet?
 - Bleibt `/statsimport reload` bei laufendem Import geblockt?
 
-## Legacy-Hinweis
-
-`temp/legacy-python` enthält den früheren Python-Importer inklusive Schema/Runner.
-Dieser Ordner ist kein aktiver Teil der Java-Plugin-Runtime, kann aber als Referenz für Migrationsvergleich dienen.
 
 

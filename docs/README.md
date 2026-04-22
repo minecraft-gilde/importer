@@ -43,6 +43,5 @@ Kernmerkmale:
 - `src/main/resources/config.yml` - Default-Konfiguration
 - `src/main/resources/db/schema.sql` - DB-Schema
 - `src/main/resources/metric-seeds.yml` - Seed-Daten für Metriken
-- `temp/legacy-python` - Altes Python-Importer-Setup (nur Referenz/Migration)
 
 

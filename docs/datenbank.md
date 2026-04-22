@@ -126,6 +126,4 @@ LIMIT 10;
 
 `src/main/resources/db/schema.sql` im Java-Plugin ist defensiv (`CREATE TABLE IF NOT EXISTS`) und für Bootstrap in bestehenden Umgebungen geeignet.
 
-`temp/legacy-python/db/schema.sql` ist ein Legacy-All-in-one-Skript mit `DROP TABLE` und Full-Seeds, primär für alte Python-Importer-Setups. Dieses Skript nur bewusst und nicht in Produktivumgebungen ohne Backup ausführen.
-
 

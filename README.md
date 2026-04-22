@@ -1,20 +1,12 @@
 ﻿# Stats Importer Plugin (Paper/Folia)
 
-Dieses Repository enthält jetzt ein Java-Plugin, das den bisherigen Python-Importer für Minecraft-Stats auf Paper/Folia ersetzt.
+Dieses Repository enthält ein Java-Plugin für den Import von Minecraft-Stats auf Paper/Folia.
 
 ## Dokumentation
 
 Die ausführliche Projektdokumentation liegt unter:
 
 - [docs/README.md](docs/README.md)
-
-## Altbestand
-
-Die bisherigen Python-Dateien und DB-Skripte liegen unverändert unter:
-
-- `temp/legacy-python/`
-
-Darin kannst du jederzeit die alte Logik nachschlagen.
 
 ## Build
 
