@@ -245,7 +245,8 @@ public final class ImportCoordinator implements AutoCloseable {
                     List<UUID> changedUuidsBuffer = new ArrayList<>();
                     List<StatsRow> statsRowsBuffer = new ArrayList<>();
                     List<MetricValueRow> metricRowsBuffer = new ArrayList<>();
-                    Set<UUID> knownStatsUuids = new HashSet<>();
+                    Set<UUID> knownStatsSourceUuids = new HashSet<>();
+                    Set<UUID> statsIncludedUuids = new HashSet<>();
 
                     // Backpressure guard: cap submitted calculator jobs so memory usage stays bounded.
                     int maxInflight = Math.max(settings.workerThreads(), settings.maxInflightCalculations());
@@ -264,7 +265,7 @@ public final class ImportCoordinator implements AutoCloseable {
                             if (excluded.contains(uuid)) {
                                 continue;
                             }
-                            knownStatsUuids.add(uuid);
+                            knownStatsSourceUuids.add(uuid);
 
                             Map<String, Object> root;
                             try {
@@ -290,6 +291,7 @@ public final class ImportCoordinator implements AutoCloseable {
                                 continue;
                             }
 
+                            statsIncludedUuids.add(uuid);
                             kept++;
                             if (!dryRun) {
                                 seenBuffer.add(uuid);
@@ -359,7 +361,13 @@ public final class ImportCoordinator implements AutoCloseable {
                         // Remove rows for players whose stats file no longer exists in this import pass.
                         cleanupMissing(connection, runId);
 
-                        KnownSyncResult knownSyncResult = syncKnownPlayers(connection, knownStatsUuids, usercacheNames, banFile);
+                        KnownSyncResult knownSyncResult = syncKnownPlayers(
+                                connection,
+                                knownStatsSourceUuids,
+                                statsIncludedUuids,
+                                usercacheNames,
+                                banFile
+                        );
                         knownNote = " | known " + knownSyncResult.note();
 
                         BanSyncResult banSyncResult = syncBans(connection, runId, banFile);
@@ -396,7 +404,8 @@ public final class ImportCoordinator implements AutoCloseable {
                     } else {
                         resolverNote = " | dry-run: skipped write/cleanup/king/name-resolver";
                         banNote = " | bans dry-run: parsed=" + banFile.entries().size() + ", syncable=" + banFile.syncable();
-                        knownNote = " | known dry-run: stats=" + knownStatsUuids.size()
+                        knownNote = " | known dry-run: stats-source=" + knownStatsSourceUuids.size()
+                                + ", stats-included=" + statsIncludedUuids.size()
                                 + ", usercache=" + usercacheNames.size()
                                 + ", bans=" + banFile.entries().size();
                     }
@@ -655,7 +664,8 @@ public final class ImportCoordinator implements AutoCloseable {
 
     private KnownSyncResult syncKnownPlayers(
             Connection connection,
-            Set<UUID> knownStatsUuids,
+            Set<UUID> knownStatsSourceUuids,
+            Set<UUID> statsIncludedUuids,
             Map<UUID, String> usercacheNames,
             BanFileLoadResult banFile
     ) throws SQLException {
@@ -663,7 +673,12 @@ public final class ImportCoordinator implements AutoCloseable {
             return new KnownSyncResult("table missing");
         }
 
-        List<KnownPlayerRow> rows = buildKnownPlayerRows(knownStatsUuids, usercacheNames, banFile.entries());
+        List<KnownPlayerRow> rows = buildKnownPlayerRows(
+                knownStatsSourceUuids,
+                statsIncludedUuids,
+                usercacheNames,
+                banFile.entries()
+        );
         if (!rows.isEmpty()) {
             String sql = """
                     INSERT INTO player_known (
@@ -711,13 +726,18 @@ public final class ImportCoordinator implements AutoCloseable {
     }
 
     private List<KnownPlayerRow> buildKnownPlayerRows(
-            Set<UUID> knownStatsUuids,
+            Set<UUID> knownStatsSourceUuids,
+            Set<UUID> statsIncludedUuids,
             Map<UUID, String> usercacheNames,
             List<BanEntry> bans
     ) {
         Map<UUID, KnownPlayerAccumulator> byUuid = new HashMap<>();
 
-        for (UUID uuid : knownStatsUuids) {
+        for (UUID uuid : knownStatsSourceUuids) {
+            byUuid.computeIfAbsent(uuid, ignored -> new KnownPlayerAccumulator(uuid));
+        }
+
+        for (UUID uuid : statsIncludedUuids) {
             KnownPlayerAccumulator acc = byUuid.computeIfAbsent(uuid, ignored -> new KnownPlayerAccumulator(uuid));
             acc.markSeenInStats();
         }
