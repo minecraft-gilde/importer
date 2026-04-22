@@ -44,6 +44,7 @@ Wichtig:
 - `import.interval-seconds`: Auto-Import-Intervall in Sekunden
 - `import.stats-dir`: `auto` nutzt den Standardpfad des Servers (`<world>/stats`)
 - `import.usercache-path`: `auto` nutzt `<server-root>/usercache.json`
+- `import.banned-players-path`: `auto` nutzt `<server-root>/banned-players.json`
 - `import.worker-threads`: Anzahl paralleler Threads für die Stat-Berechnung
 - `import.max-inflight-calculations`: Begrenzung für gleichzeitig ausstehende Berechnungen
 - `database.*`: MariaDB-Zugangsdaten
@@ -71,5 +72,5 @@ Das Verhalten steuerst du in `bootstrap.*` in der `config.yml`.
 
 ## Datenbank
 
-Das Plugin erwartet weiterhin das bestehende MariaDB-Schema (inkl. `metric_def`, `metric_source`, `site_state`, `import_run`, `player_profile`, `player_stats`, `metric_value` und optional `metric_award`).
+Das Plugin erwartet weiterhin das bestehende MariaDB-Schema (inkl. `metric_def`, `metric_source`, `site_state`, `import_run`, `player_profile`, `player_known`, `player_ban`, `player_stats`, `metric_value` und optional `metric_award`).
 

@@ -14,6 +14,7 @@ public record PluginSettings(
             long intervalSeconds,
             String statsDirectory,
             String usercachePath,
+            String bannedPlayersPath,
             int minPlayTicks,
             int workerThreads,
             int maxInflightCalculations,

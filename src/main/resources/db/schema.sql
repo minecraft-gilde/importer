@@ -35,6 +35,42 @@ CREATE TABLE IF NOT EXISTS player_profile (
   CONSTRAINT fk_pp_run FOREIGN KEY (run_id) REFERENCES import_run (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS player_known (
+  uuid BINARY(16) NOT NULL,
+  name VARCHAR(16) NOT NULL,
+  name_lc VARCHAR(16) NOT NULL,
+  name_source VARCHAR(16) NOT NULL DEFAULT 'unknown',
+  name_priority TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  name_checked_at DATETIME DEFAULT NULL,
+  first_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  seen_in_stats TINYINT(1) NOT NULL DEFAULT 0,
+  seen_in_usercache TINYINT(1) NOT NULL DEFAULT 0,
+  seen_in_bans TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (uuid),
+  KEY idx_known_name_search (name_lc, uuid),
+  KEY idx_known_last_seen (last_seen)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS player_ban (
+  run_id BIGINT UNSIGNED NOT NULL,
+  uuid BINARY(16) NOT NULL,
+  name VARCHAR(16) NOT NULL,
+  name_lc VARCHAR(16) NOT NULL,
+  reason VARCHAR(512) DEFAULT NULL,
+  banned_by VARCHAR(64) DEFAULT NULL,
+  banned_at DATETIME DEFAULT NULL,
+  expires_at DATETIME DEFAULT NULL,
+  is_permanent TINYINT(1) NOT NULL DEFAULT 1,
+  source_raw VARCHAR(512) DEFAULT NULL,
+  expires_raw VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (run_id, uuid),
+  KEY idx_ban_name_search (run_id, name_lc, uuid),
+  KEY idx_ban_created (run_id, banned_at),
+  KEY idx_ban_expires (run_id, expires_at),
+  CONSTRAINT fk_pb_run FOREIGN KEY (run_id) REFERENCES import_run (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS player_stats (
   run_id BIGINT UNSIGNED NOT NULL,
   uuid BINARY(16) NOT NULL,
@@ -109,3 +145,11 @@ SELECT mv.*
 FROM metric_value mv
 JOIN site_state s ON s.id = 1 AND mv.run_id = s.active_run_id;
 
+CREATE OR REPLACE ALGORITHM=UNDEFINED SQL SECURITY INVOKER VIEW v_player_ban AS
+SELECT pb.*
+FROM player_ban pb
+JOIN site_state s ON s.id = 1 AND pb.run_id = s.active_run_id;
+
+CREATE OR REPLACE ALGORITHM=UNDEFINED SQL SECURITY INVOKER VIEW v_player_known AS
+SELECT pk.*
+FROM player_known pk;

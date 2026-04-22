@@ -7,6 +7,8 @@
   stats-dir: "auto"
   # Pfad zu usercache.json (auto = aus Server-Verzeichnis).
   usercache-path: "auto"
+  # Pfad zu banned-players.json (auto = aus Server-Verzeichnis).
+  banned-players-path: "auto"
   # Mindest-Spielzeit in Ticks (20 Ticks = 1 Sekunde).
   min-play-ticks: 72000
   # Anzahl Threads fuer Berechnung geaenderter Spieler.

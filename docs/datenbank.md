@@ -21,6 +21,16 @@ Beim Bootstrap validiert das Plugin Pflichtobjekte und kann Schema/Seeds automat
 
 - `player_profile`
   - Name, Suchfeld `name_lc`, Quelleninfos, `last_seen`
+- `player_known`
+  - persistente Known-Players-Quelle (run-unabhaengig)
+  - wird aus `stats/*.json`, `usercache.json`, `banned-players.json` per Upsert gepflegt
+  - Name ist immer belegt (bei fehlender Quelle: deterministischer Fallback aus UUID)
+  - Resolver-Metadatum `name_checked_at` steuert Refresh fuer Mojang-Rechecks
+  - Felder fuer Statuslogik: `seen_in_stats`, `seen_in_usercache`, `seen_in_bans`, `first_seen`, `last_seen`
+- `player_ban`
+  - aktive Bans aus `banned-players.json` pro `run_id`
+  - Name ist immer belegt (bei fehlender Quelle: deterministischer Fallback aus UUID)
+  - Felder fuer Suche/Anzeige: `name`, `reason`, `banned_by`, `banned_at`, `expires_at`, `is_permanent`
 - `player_stats`
   - gzip-komprimiertes canonical Stats-JSON
   - SHA1 zur Change-Detection
@@ -39,10 +49,14 @@ Beim Bootstrap validiert das Plugin Pflichtobjekte und kann Schema/Seeds automat
 ## Views (aktiver Snapshot)
 
 - `v_player_profile`
+- `v_player_known`
+- `v_player_ban`
 - `v_player_stats`
 - `v_metric_value`
 
-Diese Views joinen jeweils mit `site_state.active_run_id` und zeigen damit immer die aktive Datenbasis.
+`v_player_profile`, `v_player_ban`, `v_player_stats` und `v_metric_value` joinen mit `site_state.active_run_id` und zeigen damit immer die aktive Datenbasis.
+
+`v_player_known` ist eine 1:1 Sicht auf `player_known` (kein Run-Snapshot), damit die "war noch nie auf dem Server"-Pruefung nicht von `min-play-ticks` abhaengt.
 
 ## Import-Schreibstrategie
 

@@ -334,6 +334,8 @@ public final class SchemaBootstrapper {
         required.put("import_run", List.of("id", "generated_at", "status"));
         required.put("site_state", List.of("id", "active_run_id", "updated_at"));
         required.put("player_profile", List.of("run_id", "uuid", "name", "name_lc", "last_seen"));
+        required.put("player_known", List.of("uuid", "name", "name_lc", "name_source", "name_priority", "first_seen", "last_seen", "seen_in_stats", "seen_in_usercache", "seen_in_bans"));
+        required.put("player_ban", List.of("run_id", "uuid", "name", "name_lc", "reason", "banned_by", "banned_at", "expires_at", "is_permanent"));
         required.put("player_stats", List.of("run_id", "uuid", "stats_gzip", "stats_sha1", "updated_at"));
         required.put("metric_def", List.of("id", "label", "category", "unit", "sort_order", "enabled", "divisor", "decimals"));
         required.put("metric_source", List.of("metric_id", "section", "mc_key", "weight"));

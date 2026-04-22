@@ -4,9 +4,9 @@
 
 Das Plugin laeuft innerhalb eines Paper/Folia Servers und uebernimmt ETL-Aufgaben:
 
-- Input: `world/stats/<uuid>.json` + `usercache.json`
+- Input: `world/stats/<uuid>.json` + `usercache.json` + `banned-players.json`
 - Verarbeitung: Filter, Normierung, Metrikberechnung, Hash-Vergleich
-- Output: Tabellen `player_profile`, `player_stats`, `metric_value` (plus optional `metric_award`)
+- Output: Tabellen `player_profile`, `player_known`, `player_ban`, `player_stats`, `metric_value` (plus optional `metric_award`)
 
 Die aktuelle Datenbasis wird ueber `site_state.active_run_id` verwaltet.
 
@@ -81,28 +81,31 @@ Beim Stop (`onDisable`) werden beide Scheduler, Workerpools und DB-Pool sauber g
 2. `running`-Flag verhindert parallele lokale Laeufe
 3. `stats-dir` und `usercache-path` werden aufgeloest (`auto` moeglich)
 4. usercache-Namen werden geladen
-5. DB Advisory Lock via `GET_LOCK` wird angefordert
-6. Aktive `run_id` wird ermittelt oder neu erstellt (`site_state`)
-7. Aktive Metrikquellen werden aus DB geladen (`metric_def.enabled=1`)
-8. Vorhandene SHA1-Hashes und Profile werden in Maps geladen
-9. Temp-Tabelle `tmp_seen` wird neu erstellt
-10. Alle `*.json`-Dateien werden gescannt
-11. UUID aus Dateiname lesen
-12. Optional ueber `exclude-uuids` verwerfen
-13. JSON lesen, Stats extrahieren, `_wall_banner` Keys bereinigen
-14. Bei Parse-Fehlern wird die UUID trotzdem als `seen` markiert, damit kein Cleanup-Verlust entsteht
-15. Mindestspielzeit pruefen (`minecraft:custom.minecraft:play_time`)
-16. Profilzeile erzeugen (Name aus usercache, DB oder Fallback)
-17. Canonical JSON serialisieren (sortierte Keys)
-18. SHA1 bilden und gegen DB vergleichen
-19. Nur geaenderte Spieler an Workerpool fuer Berechnung senden
-20. Ergebnisse laufend in Batches in DB flushen
-21. Nach Scan Restarbeiten flushen
-22. Daten verwaister Spieler ueber `tmp_seen` bereinigen
-23. Optional "king" Punkte neu berechnen
-24. Optional Name-Resolver direkt nach Import mit eigenem Budget (`after-import-max-per-run`)
-25. Laufzeitstempel aktualisieren und Summary setzen
-26. DB Lock freigeben
+5. Ban-Eintraege aus `banned-players.json` werden geladen
+6. DB Advisory Lock via `GET_LOCK` wird angefordert
+7. Aktive `run_id` wird ermittelt oder neu erstellt (`site_state`)
+8. Aktive Metrikquellen werden aus DB geladen (`metric_def.enabled=1`)
+9. Vorhandene SHA1-Hashes und Profile werden in Maps geladen
+10. Temp-Tabelle `tmp_seen` wird neu erstellt
+11. Alle `*.json`-Dateien werden gescannt
+12. UUID aus Dateiname lesen
+13. Optional ueber `exclude-uuids` verwerfen
+14. JSON lesen, Stats extrahieren, `_wall_banner` Keys bereinigen
+15. Bei Parse-Fehlern wird die UUID trotzdem als `seen` markiert, damit kein Cleanup-Verlust entsteht
+16. Mindestspielzeit pruefen (`minecraft:custom.minecraft:play_time`)
+17. Profilzeile erzeugen (Name aus usercache, DB oder Fallback)
+18. Canonical JSON serialisieren (sortierte Keys)
+19. SHA1 bilden und gegen DB vergleichen
+20. Nur geaenderte Spieler an Workerpool fuer Berechnung senden
+21. Ergebnisse laufend in Batches in DB flushen
+22. Nach Scan Restarbeiten flushen
+23. Daten verwaister Spieler ueber `tmp_seen` bereinigen
+24. Known-Players werden per Upsert in `player_known` synchronisiert (persistent, run-unabhaengig)
+25. Ban-Daten werden in `player_ban` synchronisiert (pro Run kompletter Snapshot)
+26. Optional "king" Punkte neu berechnen
+27. Optional Name-Resolver direkt nach Import mit eigenem Budget (`after-import-max-per-run`) auf `player_profile` plus Restbudget auf `player_known`
+28. Laufzeitstempel aktualisieren und Summary setzen
+29. DB Lock freigeben
 
 ## Parallelisierung und Backpressure
 
