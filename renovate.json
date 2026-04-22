@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "Europe/Berlin",
+  "schedule": [
+    "on the first day of the month"
+  ],
+  "separateMajorMinor": true,
+  "packageRules": [
+    {
+      "description": "Bundle non-major updates into one monthly PR",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "groupName": "monthly non-major dependency updates"
+    }
+  ]
+}
