@@ -1,4 +1,4 @@
-﻿# Konfiguration
+﻿﻿# Konfiguration
 
 ## Speicherort
 
@@ -18,66 +18,66 @@ Default-Werte im Repository:
 |---|---:|---|
 | `import.enabled` | `true` | Aktiviert periodischen Timer-Import beim Pluginstart |
 | `import.interval-seconds` | `60` | Intervall des Timer-Imports in Sekunden (Minimum 1) |
-| `import.ignore-hash-on-timer` | `false` | Ignoriert SHA1-Hashpruefung bei Timerlaeufen |
+| `import.ignore-hash-on-timer` | `false` | Ignoriert SHA1-Hashprüfung bei Timerläufen |
 
 ## Inputpfade
 
 | Key | Default | Bedeutung |
 |---|---:|---|
-| `import.stats-dir` | `auto` | Pfad zu `world/stats`; `auto/default/standard/leer` wird automatisch aufgeloest |
+| `import.stats-dir` | `auto` | Pfad zu `world/stats`; `auto/default/standard/leer` wird automatisch aufgelöst |
 | `import.usercache-path` | `auto` | Pfad zu `usercache.json`; bei `auto` wird `<worldContainer>/usercache.json` genutzt |
 | `import.banned-players-path` | `auto` | Pfad zu `banned-players.json`; bei `auto` wird `<worldContainer>/banned-players.json` genutzt |
 
-## Filter und Ausschluesse
+## Filter und Ausschlüsse
 
 | Key | Default | Bedeutung |
 |---|---:|---|
-| `import.min-play-ticks` | `72000` | Mindestspielzeit fuer Import (Ticks) |
+| `import.min-play-ticks` | `72000` | Mindestspielzeit für Import (Ticks) |
 | `import.exclude-uuids` | `[]` | UUID-Liste, die komplett ignoriert wird |
 
-Hinweis: UUIDs werden flexibel geparst (mit oder ohne Bindestriche, case-insensitive). Ungueltige Eintraege werden ignoriert.
+Hinweis: UUIDs werden flexibel geparst (mit oder ohne Bindestriche, case-insensitive). Ungültige Einträge werden ignoriert.
 
 ## Performance und Batching
 
 | Key | Default | Bedeutung |
 |---|---:|---|
-| `import.worker-threads` | `6` | Anzahl Berechnungs-Threads fuer Metriken |
+| `import.worker-threads` | `6` | Anzahl Berechnungs-Threads für Metriken |
 | `import.max-inflight-calculations` | `3000` | Maximal gleichzeitig ausstehende Berechnungen |
-| `import.flush-seen` | `2000` | Batch-Groesse fuer `tmp_seen` |
-| `import.flush-profiles` | `2000` | Batch-Groesse fuer `player_profile` |
-| `import.flush-changed` | `800` | Batch-Groesse fuer geaenderte Spieler (`player_stats` + `metric_value`) |
+| `import.flush-seen` | `2000` | Batch-Größe für `tmp_seen` |
+| `import.flush-profiles` | `2000` | Batch-Größe für `player_profile` |
+| `import.flush-changed` | `800` | Batch-Größe für geänderte Spieler (`player_stats` + `metric_value`) |
 
 ## DB-Lock
 
 | Key | Default | Bedeutung |
 |---|---:|---|
-| `import.db-lock-name` | `mc_stats_import` | Name fuer MariaDB Advisory Lock |
-| `import.db-lock-timeout-seconds` | `5` | Wartezeit fuer Lock-Erwerb |
+| `import.db-lock-name` | `mc_stats_import` | Name für MariaDB Advisory Lock |
+| `import.db-lock-timeout-seconds` | `5` | Wartezeit für Lock-Erwerb |
 
-## Server-Koenig
+## Server-König
 
 | Key | Default | Bedeutung |
 |---|---:|---|
 | `import.king-enabled` | `true` | Aktiviert Top-3 Punkteberechnung je Metrik |
-| `import.king-metric-id` | `king` | Ziel-Metrik-ID fuer Summenpunkte |
-| `import.king-points` | `[5, 3, 1]` | Punkte fuer Platz 1/2/3 |
+| `import.king-metric-id` | `king` | Ziel-Metrik-ID für Summenpunkte |
+| `import.king-points` | `[5, 3, 1]` | Punkte für Platz 1/2/3 |
 
-Hinweis: Die Liste wird intern auf mindestens 3 Werte normalisiert. Fehlende Werte werden mit `0` aufgefuellt.
+Hinweis: Die Liste wird intern auf mindestens 3 Werte normalisiert. Fehlende Werte werden mit `0` aufgefüllt.
 
-## Namensaufloesung (Mojang)
+## Namensauflösung (Mojang)
 
 | Key | Default | Bedeutung |
 |---|---:|---|
 | `import.name-resolver.enabled` | `true` | Aktiviert den Mojang-Resolver global |
-| `import.name-resolver.max-per-run` | `1500` | Standard-Limit fuer manuelle Resolver-Laeufe (`/statsimport resolve`) |
+| `import.name-resolver.max-per-run` | `1500` | Standard-Limit für manuelle Resolver-Läufe (`/statsimport resolve`) |
 | `import.name-resolver.after-import-enabled` | `true` | Aktiviert Resolver-Lauf direkt nach Import |
 | `import.name-resolver.after-import-max-per-run` | `300` | Budget direkt nach Import (klein halten, um Importthread zu entlasten) |
-| `import.name-resolver.maintenance-enabled` | `true` | Aktiviert separaten Hintergrund-Worker fuer Namenspflege |
+| `import.name-resolver.maintenance-enabled` | `true` | Aktiviert separaten Hintergrund-Worker für Namenspflege |
 | `import.name-resolver.maintenance-interval-seconds` | `300` | Intervall des Hintergrund-Workers |
 | `import.name-resolver.maintenance-max-per-run` | `500` | Budget pro Hintergrundlauf |
 | `import.name-resolver.refresh-days` | `30` | Re-Check-Intervall in Tagen (`0` = nur fehlende/Fallback-Namen) |
 | `import.name-resolver.sleep-ms` | `150` | Pause zwischen Requests (Rate-Limit-Schutz) |
-| `import.name-resolver.connect-timeout-ms` | `5000` | Timeout fuer den Verbindungsaufbau |
+| `import.name-resolver.connect-timeout-ms` | `5000` | Timeout für den Verbindungsaufbau |
 | `import.name-resolver.request-timeout-ms` | `5000` | Timeout pro HTTP-Request |
 
 Resolver-Reihenfolge:
@@ -85,10 +85,10 @@ Resolver-Reihenfolge:
 1. `https://sessionserver.mojang.com/session/minecraft/profile/<uuid>`
 2. `https://api.mojang.com/user/profiles/<uuid>/names` (letzter Name aus Verlauf)
 
-Kandidaten-Prioritaet:
+Kandidaten-Priorität:
 
 1. `fallback`/`unknown` und fehlende Namen
-2. danach stale Eintraege ueber `refresh-days`
+2. danach stale Einträge über `refresh-days`
 
 ## Abschnitt `database`
 
@@ -99,8 +99,8 @@ Kandidaten-Prioritaet:
 | `database.name` | `mg-stats` | DB-Name |
 | `database.user` | `stats_user` | DB-Benutzer |
 | `database.password` | `change-me` | DB-Passwort |
-| `database.pool-max-size` | `10` | Hikari Pool-Groesse |
-| `database.connection-timeout-ms` | `10000` | Timeout fuer DB-Verbindungen |
+| `database.pool-max-size` | `10` | Hikari Pool-Größe |
+| `database.connection-timeout-ms` | `10000` | Timeout für DB-Verbindungen |
 
 Pflichtfelder:
 
@@ -115,7 +115,7 @@ Fehlen diese Werte, bricht der Pluginstart mit Konfigurationsfehler ab.
 | Key | Default | Bedeutung |
 |---|---:|---|
 | `bootstrap.auto-schema` | `true` | Schema bei fehlenden DB-Objekten automatisch anwenden |
-| `bootstrap.verify-schema` | `true` | Schema auf Pflichtobjekte pruefen |
+| `bootstrap.verify-schema` | `true` | Schema auf Pflichtobjekte prüfen |
 | `bootstrap.seed-on-missing-schema` | `true` | Nach Schema-Erstellung Seed-Import starten |
 | `bootstrap.seed-if-metric-def-empty` | `true` | Seed-Import starten, wenn `metric_def` leer ist |
 | `bootstrap.seed-file` | `metric-seeds.yml` | Seed-Datei (relativ zu Plugin-Datenordner oder absolut) |
@@ -160,11 +160,45 @@ Einige Werte werden beim Laden begrenzt:
 - `flush-profiles: 1000-2000`
 - `flush-changed: 400-1000`
 
-## Grosse Server
+## Große Server
 
 - `worker-threads: 8-12` (abh. von CPU)
 - `max-inflight-calculations: 4000+`
 - `flush-seen/profiles: 2000-5000`
 - `flush-changed: 1000-3000`
 
-Wichtig: Erhoehe Werte schrittweise und beobachte DB-Latenzen, GC-Verhalten und Importdauer.
+Wichtig: Erhöhe Werte schrittweise und beobachte DB-Latenzen, GC-Verhalten und Importdauer.
+
+## Änderungswirkung pro Bereich
+
+Diese Übersicht hilft bei der Einschätzung von Risiko und Beobachtungsbedarf.
+
+| Bereich | Typische Keys | Wirkung | Nach Änderung prüfen |
+|---|---|---|---|
+| Laufsteuerung | `enabled`, `interval-seconds`, `ignore-hash-on-timer` | Häufigkeit und Rechenlast der Läufe | Importdauer, Überlappungen, Lock-Wartezeiten |
+| Inputpfade | `stats-dir`, `usercache-path`, `banned-players-path` | Datenvollständigkeit und Namensqualität | geladene Spielerzahl, Name-Fallback-Anteil, Ban-Snapshot |
+| Filter | `min-play-ticks`, `exclude-uuids` | Sichtbare Datenbasis | `kept`/`changed`, Spielerzahl in Views |
+| Parallelität | `worker-threads`, `max-inflight-calculations` | CPU-/RAM-Last und Durchsatz | CPU, Heap, DB-Latenz, Laufzeit |
+| Batching | `flush-seen`, `flush-profiles`, `flush-changed` | Write-Pattern und Transaktionsgröße | Roundtrips, Lock-Dauer, Fehlerquote |
+| Locking | `db-lock-name`, `db-lock-timeout-seconds` | Verhalten bei Parallelzugriff | Lock-Fehler, Wartezeiten |
+| King | `king-enabled`, `king-metric-id`, `king-points` | Leaderboard-Aggregation | Plausibilität `king`-Werte |
+| Resolver | `name-resolver.*` | Namensqualität vs. Upstream-Last | resolved/failed/skipped, API-Rate-Limits |
+| Datenbank | `database.*` | Verbindung, Pooling, Stabilität | Connection-Fehler, Timeout-Rate |
+| Bootstrap | `bootstrap.*` | Schema-/Seed-Automation | Startlogs, Tabellen-/Seed-Vollständigkeit |
+
+## Sichere Rollout-Reihenfolge für Konfigurationsänderungen
+
+1. Änderung in kleiner Einheit vornehmen
+2. Plugin reloaden oder neu starten
+3. Manuellen Lauf starten: `/statsimport run`
+4. Status und Laufkennzahlen prüfen: `/statsimport status`
+5. SQL-Stichprobe auf `v_player_profile` und `v_metric_value`
+6. Erst danach weitere Regler anpassen
+
+## Minimal-Check nach jeder Konfigurationsänderung
+
+- Lauf startet ohne Fehler
+- `success=true` im letzten Lauf
+- Spieler- und Metrikanzahlen plausibel
+- Keine Lock-Stauung durch Timer/Parallelbetrieb
+- Falls Resolver aktiv: Kandidaten werden abgearbeitet und nicht nur akkumuliert

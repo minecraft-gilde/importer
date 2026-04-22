@@ -1,4 +1,4 @@
-﻿# Entwicklung
+﻿﻿# Entwicklung
 
 ## Projektstruktur
 
@@ -85,7 +85,7 @@ Bei Durchsatzproblemen iterativ anpassen:
 3. `flush-*` BatchGrößen
 4. DB-Indizes/Hardware prüfen
 
-Aendere nie alle Regler gleichzeitig, damit Ursache und Wirkung erkennbar bleiben.
+Ändere nie alle Regler gleichzeitig, damit Ursache und Wirkung erkennbar bleiben.
 
 ## Test-Checkliste (manuell)
 
@@ -96,6 +96,55 @@ Aendere nie alle Regler gleichzeitig, damit Ursache und Wirkung erkennbar bleibe
 - Wird Cleanup korrekt ausgeführt, wenn Spielerdateien fehlen?
 - Wird "king" korrekt gebildet?
 - Bleibt `/statsimport reload` bei laufendem Import geblockt?
+
+## CI und Build-Gate
+
+Die CI (`.github/workflows/ci.yml`) prüft aktuell:
+
+- Checkout
+- Java 21 Setup
+- Gradle Wrapper Validation
+- `./gradlew build --no-daemon`
+
+Erwartung vor Merge:
+
+- lokaler Build und CI-Build sind beide grün
+- keine ungeklärten Doku-/Schema-Differenzen
+
+## Definition of Done (DoD)
+
+Eine Änderung gilt als abgeschlossen, wenn:
+
+- Implementierung fachlich vollständig ist
+- Konfiguration und Defaults konsistent sind
+- Doku in den betroffenen Kapiteln aktualisiert wurde
+- Build erfolgreich ist
+- manuelle Lauf-/Datenchecks durchgeführt wurden
+- API-Vertrag geprüft wurde, falls DB-Objekte betroffen sind
+
+## PR-Checkliste
+
+Vor dem Merge prüfen:
+
+1. Ist klar, welche Laufart betroffen ist (Timer, manuell, Resolver)?
+2. Sind alle betroffenen `import.*`, `database.*`, `bootstrap.*`-Optionen dokumentiert?
+3. Sind Schema-/Seed-Änderungen mit den vorhandenen Zugriffspfaden kompatibel?
+4. Wurden mögliche Auswirkungen auf `website` bewertet?
+5. Gibt es eine konkrete Testbeschreibung im PR-Text?
+
+## Regressionen, die besonders häufig übersehen werden
+
+- Resolver läuft, aber `name_checked_at` wird nicht sinnvoll fortgeschrieben
+- `ignorehash`/`dryrun` verändert unerwartet den Persistenzpfad
+- Cleanup entfernt Daten bei fehlerhafter `seen`-Markierung
+- neue Metrik ist in Seeds vorhanden, aber `enabled`/`sort_order` unplausibel
+- Änderungen an DB-Objekten brechen API-seitige Annahmen
+
+## Ergänzende Kapitel
+
+- Architektur und Invarianten: [architektur.md](./architektur.md)
+- Datenmodell und SQL-Prüfungen: [datenbank.md](./datenbank.md)
+- Schnittstellenvertrag zum `website`-Repository: [schnittstellen.md](./schnittstellen.md)
 
 
 

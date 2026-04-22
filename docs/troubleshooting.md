@@ -1,4 +1,4 @@
-﻿# Troubleshooting
+﻿﻿# Troubleshooting
 
 ## Plugin startet nicht
 
@@ -48,7 +48,7 @@ Ursache:
 Lösung:
 
 - Parallele Importjobs vermeiden
-- Intervall verGrößern
+- Intervall vergrößern
 - `import.db-lock-timeout-seconds` erhöhen
 
 ## `stats-dir not found: ...`
@@ -121,5 +121,76 @@ prüfen:
 - Inputdateien im Stats-Ordner
 - Filterwerte in `config.yml`
 - Ausschlussliste
+
+## Import läuft erfolgreich, aber `changed=0`
+
+Hintergrund:
+
+- Hash-Skip überspringt unveränderte Spieler bewusst.
+
+Prüfen:
+
+1. Wurden Stats-Dateien seit letztem Lauf tatsächlich geändert?
+2. Wurde versehentlich mit identischem Datenstand getestet?
+3. Falls Vollrecompute gewünscht: `/statsimport run ignorehash`
+
+## Dry-Run erzeugt keine neuen Daten
+
+Hintergrund:
+
+- Verhalten ist korrekt: Dry-Run schreibt keine Daten in die DB.
+
+Prüfen:
+
+1. Wurde `/statsimport run dryrun` statt `/statsimport run` verwendet?
+2. Erwartung an den Laufmodus im Team klar dokumentieren
+
+## Resolver startet nicht
+
+Typische Ursachen:
+
+- Ein Import- oder Resolverlauf ist bereits aktiv
+- `import.name-resolver.enabled` ist deaktiviert
+- `max`-Parameter ungültig (`< 1` oder kein Integer)
+
+Prüfen:
+
+1. `/statsimport status`
+2. Konfiguration `import.name-resolver.*`
+3. Aufrufsyntax `/statsimport resolve [max]`
+
+## Views liefern leeres Ergebnis trotz vorhandener Basistabellen
+
+Typische Ursachen:
+
+- `site_state.active_run_id` ist `NULL` oder zeigt auf nicht vorhandenen Lauf
+- Importlauf hat den Snapshot nicht aktivieren können
+
+Prüfen:
+
+```sql
+SELECT active_run_id FROM site_state WHERE id = 1;
+SELECT id, generated_at, status FROM import_run ORDER BY id DESC LIMIT 5;
+```
+
+## Hohe DB-Last während Import
+
+Typische Stellhebel:
+
+- `worker-threads` reduzieren
+- `max-inflight-calculations` reduzieren
+- `flush-*` anpassen (zu große Batches können Peaks erzeugen)
+- Importintervall vergrößern
+
+Vorgehen:
+
+1. Immer nur einen Parameter gleichzeitig ändern
+2. Nach jeder Änderung einen vollständigen Lauf messen
+
+## Ergänzende Kapitel
+
+- Konfigurationsdetails und Grenzwerte: [konfiguration.md](./konfiguration.md)
+- Betriebsrunbooks: [betrieb.md](./betrieb.md)
+- SQL-Integritätschecks: [datenbank.md](./datenbank.md)
 
 

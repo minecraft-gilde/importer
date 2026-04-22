@@ -1,4 +1,4 @@
-﻿# Datenbank
+﻿﻿# Datenbank
 
 ## Quelle für Schema und Seeds
 
@@ -22,15 +22,15 @@ Beim Bootstrap validiert das Plugin Pflichtobjekte und kann Schema/Seeds automat
 - `player_profile`
   - Name, Suchfeld `name_lc`, Quelleninfos, `last_seen`
 - `player_known`
-  - persistente Known-Players-Quelle (run-unabhaengig)
+  - persistente Known-Players-Quelle (run-unabhängig)
   - wird aus `stats/*.json`, `usercache.json`, `banned-players.json` per Upsert gepflegt
   - Name ist immer belegt (bei fehlender Quelle: deterministischer Fallback aus UUID)
-  - Resolver-Metadatum `name_checked_at` steuert Refresh fuer Mojang-Rechecks
-  - Felder fuer Statuslogik: `seen_in_stats`, `seen_in_usercache`, `seen_in_bans`, `first_seen`, `last_seen`
+  - Resolver-Metadatum `name_checked_at` steuert Refresh für Mojang-Rechecks
+  - Felder für Statuslogik: `seen_in_stats`, `seen_in_usercache`, `seen_in_bans`, `first_seen`, `last_seen`
 - `player_ban`
   - aktive Bans aus `banned-players.json` pro `run_id`
   - Name ist immer belegt (bei fehlender Quelle: deterministischer Fallback aus UUID)
-  - Felder fuer Suche/Anzeige: `name`, `reason`, `banned_by`, `banned_at`, `expires_at`, `is_permanent`
+  - Felder für Suche/Anzeige: `name`, `reason`, `banned_by`, `banned_at`, `expires_at`, `is_permanent`
 - `player_stats`
   - gzip-komprimiertes canonical Stats-JSON
   - SHA1 zur Change-Detection
@@ -56,7 +56,7 @@ Beim Bootstrap validiert das Plugin Pflichtobjekte und kann Schema/Seeds automat
 
 `v_player_profile`, `v_player_ban`, `v_player_stats` und `v_metric_value` joinen mit `site_state.active_run_id` und zeigen damit immer die aktive Datenbasis.
 
-`v_player_known` ist eine 1:1 Sicht auf `player_known` (kein Run-Snapshot), damit die "war noch nie auf dem Server"-Pruefung nicht von `min-play-ticks` abhaengt.
+`v_player_known` ist eine 1:1 Sicht auf `player_known` (kein Run-Snapshot), damit die "war noch nie auf dem Server"-Prüfung nicht von `min-play-ticks` abhängt.
 
 ## Import-Schreibstrategie
 
@@ -121,6 +121,65 @@ WHERE metric_id = 'hours'
 ORDER BY value DESC
 LIMIT 10;
 ```
+
+## Zusätzliche Integritätsprüfungen
+
+## Konsistenz von `site_state`
+
+```sql
+SELECT s.id, s.active_run_id, r.id AS run_exists
+FROM site_state s
+LEFT JOIN import_run r ON r.id = s.active_run_id
+WHERE s.id = 1;
+```
+
+Erwartung: `run_exists` ist nicht `NULL`.
+
+## Waisenprüfung in `metric_value`
+
+```sql
+SELECT COUNT(*) AS orphan_metric_rows
+FROM metric_value mv
+LEFT JOIN import_run ir ON ir.id = mv.run_id
+WHERE ir.id IS NULL;
+```
+
+Erwartung: `0`.
+
+## Vergleich View vs. Basistabelle (aktive Run-ID)
+
+```sql
+SELECT
+  (SELECT COUNT(*) FROM v_player_profile) AS view_count,
+  (SELECT COUNT(*)
+   FROM player_profile
+   WHERE run_id = (SELECT active_run_id FROM site_state WHERE id = 1)) AS base_count;
+```
+
+Erwartung: `view_count == base_count`.
+
+## Index-Strategie (kurz)
+
+Die wichtigsten Performance-Indizes:
+
+- `metric_value`: `(run_id, metric_id, value DESC, uuid)` für Ranglisten
+- `player_profile`: `(run_id, name_lc, uuid)` für Suche und Join-Pfade
+- `player_stats`: `(run_id, stats_sha1)` für Hash-Skip
+- `player_known`: `(name_lc, uuid)` für run-unabhängige Namensuche
+
+Bei Schemaänderungen sollten diese Zugriffspfade erhalten bleiben.
+
+## Änderungsrisiken im Datenvertrag
+
+Besonders kritisch für die Website:
+
+- Änderungen an `v_player_profile`, `v_player_stats`, `v_metric_value`, `v_player_ban`, `v_player_known`
+- Semantikänderungen von `site_state.active_run_id`
+- Umbauten an `metric_def`/`metric_value`, die Sortierung oder Sichtbarkeit beeinflussen
+
+Solche Änderungen sollten immer gemeinsam mit API/Frontend geprüft und ausgerollt werden.
+
+Siehe auch: [schnittstellen.md](./schnittstellen.md)
 
 ## Lösch- und Migrationshinweis
 
