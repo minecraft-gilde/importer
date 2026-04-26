@@ -97,7 +97,7 @@ Symptome:
 - hohe DB-Latenzen
 - hohe CPU-Last
 
-Massnahmen:
+Maßnahmen:
 
 1. `worker-threads` schrittweise anpassen
 2. `max-inflight-calculations` reduzieren, wenn RAM/DB unter Druck geraten
@@ -108,7 +108,8 @@ Massnahmen:
 
 Hintergrund:
 
-- `cleanupMissing` entfernt Spieler, die im aktuellen Lauf nicht in `tmp_seen` gelandet sind
+- Der aktive Snapshot wird erst nach erfolgreichem Import umgeschaltet
+- Spieler, die im neuen Snapshot nicht importiert werden, erscheinen nach der Umschaltung nicht mehr in den aktiven Views
 
 Typische Gründe:
 

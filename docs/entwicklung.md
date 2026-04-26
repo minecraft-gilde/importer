@@ -73,7 +73,7 @@ Wichtige Invarianten:
 - Keine parallelen Runs innerhalb einer Instanz (`AtomicBoolean running`)
 - DB-Lock muss immer freigegeben werden
 - Batch-Flushes dürfen keine Daten verlieren
-- Cleanup darf nur auf `tmp_seen`-Basis der aktuellen Runde arbeiten
+- Snapshot-Switch darf erst nach erfolgreichem Import und Safety-Check passieren
 - Summary muss auch bei Fehlern final gesetzt werden
 
 ## Performance-Tuning Ansatz

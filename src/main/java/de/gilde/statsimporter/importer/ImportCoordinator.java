@@ -176,6 +176,8 @@ public final class ImportCoordinator implements AutoCloseable {
         String resolverNote = "";
         String banNote = "";
         String knownNote = "";
+        String retentionNote = "";
+        Long candidateRunId = null;
 
         Path statsDir = resolveStatsDir();
         Path usercachePath = resolveUsercachePath();
@@ -208,14 +210,16 @@ public final class ImportCoordinator implements AutoCloseable {
                         return;
                     }
 
+                    Long previousRunId = findActiveRunId(connection);
                     long runId;
                     if (dryRun) {
                         runId = requireActiveRunId(connection);
                         logger.info("Using run_id=" + runId + " (dry-run/read-only)");
                     } else {
-                        // We keep one active run_id and update it in place so readers always see one coherent snapshot.
-                        runId = ensureRunId(connection);
-                        logger.info("Using run_id=" + runId + " (in-place)");
+                        runId = createLoadingRun(connection);
+                        candidateRunId = runId;
+                        logger.info("Using run_id=" + runId + " (loading snapshot), previous="
+                                + (previousRunId == null ? "none" : previousRunId));
                     }
 
                     Map<String, List<MetricSource>> metricSources = loadMetricSources(connection);
@@ -224,25 +228,23 @@ public final class ImportCoordinator implements AutoCloseable {
                     }
                     logger.info("Loaded " + metricSources.size() + " metrics with sources.");
 
-                    Map<UUID, byte[]> existingHashes = loadExistingHashes(connection, runId);
+                    long comparisonRunId = dryRun ? runId : (previousRunId == null ? runId : previousRunId);
+                    Map<UUID, byte[]> existingHashes = loadExistingHashes(connection, comparisonRunId);
                     boolean hasNameSource = tableHasColumn(connection, "player_profile", "name_source");
                     boolean hasNameCheckedAt = tableHasColumn(connection, "player_profile", "name_checked_at");
                     Map<UUID, PlayerProfileMeta> existingProfiles = loadExistingProfiles(
                             connection,
-                            runId,
+                            comparisonRunId,
                             hasNameSource,
                             hasNameCheckedAt
                     );
 
-                    if (!dryRun) {
-                        recreateTmpSeen(connection);
-                    }
-
                     Set<UUID> excluded = new HashSet<>(settings.excludedUuids());
                     // Buffers batch DB writes to reduce round-trips while still committing regularly.
-                    List<UUID> seenBuffer = new ArrayList<>();
                     List<ProfileRow> profileBuffer = new ArrayList<>();
                     List<UUID> changedUuidsBuffer = new ArrayList<>();
+                    List<UUID> unchangedUuidsBuffer = new ArrayList<>();
+                    List<UUID> carryOverUuidsBuffer = new ArrayList<>();
                     List<StatsRow> statsRowsBuffer = new ArrayList<>();
                     List<MetricValueRow> metricRowsBuffer = new ArrayList<>();
                     Set<UUID> knownStatsSourceUuids = new HashSet<>();
@@ -272,10 +274,19 @@ public final class ImportCoordinator implements AutoCloseable {
                                 root = objectMapper.readValue(file.toFile(), MAP_TYPE);
                             } catch (Exception ex) {
                                 if (!dryRun) {
-                                    // Keep existing DB rows for unreadable files until parsing succeeds again.
-                                    seenBuffer.add(uuid);
-                                    if (seenBuffer.size() >= settings.flushSeen()) {
-                                        flushSeen(connection, seenBuffer);
+                                    // Keep previous snapshot rows for unreadable files until parsing succeeds again.
+                                    if (previousRunId != null) {
+                                        carryOverUuidsBuffer.add(uuid);
+                                        if (carryOverUuidsBuffer.size() >= settings.flushChanged()) {
+                                            copyPreviousSnapshotBatch(
+                                                    connection,
+                                                    previousRunId,
+                                                    runId,
+                                                    carryOverUuidsBuffer,
+                                                    hasNameSource,
+                                                    hasNameCheckedAt
+                                            );
+                                        }
                                     }
                                 }
                                 logger.log(Level.WARNING, "Cannot parse stats file " + file.getFileName(), ex);
@@ -294,11 +305,6 @@ public final class ImportCoordinator implements AutoCloseable {
                             statsIncludedUuids.add(uuid);
                             kept++;
                             if (!dryRun) {
-                                seenBuffer.add(uuid);
-                                if (seenBuffer.size() >= settings.flushSeen()) {
-                                    flushSeen(connection, seenBuffer);
-                                }
-
                                 ProfileRow profileRow = buildProfileRow(
                                         runId,
                                         uuid,
@@ -319,6 +325,12 @@ public final class ImportCoordinator implements AutoCloseable {
                             // Unchanged players skip expensive recomputation; completed async tasks are still drained.
                             if (!ignoreHash && Arrays.equals(existingHashes.get(uuid), sha1)) {
                                 if (!dryRun) {
+                                    if (previousRunId != null) {
+                                        unchangedUuidsBuffer.add(uuid);
+                                        if (unchangedUuidsBuffer.size() >= settings.flushChanged()) {
+                                            copyPreviousStatsAndMetricsBatch(connection, previousRunId, runId, unchangedUuidsBuffer);
+                                        }
+                                    }
                                     completed += drainReadyResults(connection, completionService, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer, runId, false);
                                 }
                                 continue;
@@ -354,12 +366,21 @@ public final class ImportCoordinator implements AutoCloseable {
                             completed += drainReadyResults(connection, completionService, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer, runId, true);
                         }
 
-                        flushSeen(connection, seenBuffer);
                         flushProfiles(connection, profileBuffer, hasNameSource, hasNameCheckedAt);
+                        if (previousRunId != null) {
+                            copyPreviousSnapshotBatch(
+                                    connection,
+                                    previousRunId,
+                                    runId,
+                                    carryOverUuidsBuffer,
+                                    hasNameSource,
+                                    hasNameCheckedAt
+                            );
+                            copyPreviousStatsAndMetricsBatch(connection, previousRunId, runId, unchangedUuidsBuffer);
+                        }
                         flushChangedBatch(connection, runId, changedUuidsBuffer, statsRowsBuffer, metricRowsBuffer);
 
-                        // Remove rows for players whose stats file no longer exists in this import pass.
-                        cleanupMissing(connection, runId);
+                        validateInputSafety(processed, kept);
 
                         KnownSyncResult knownSyncResult = syncKnownPlayers(
                                 connection,
@@ -400,8 +421,19 @@ public final class ImportCoordinator implements AutoCloseable {
                             resolverNote = " | names after-import disabled";
                         }
 
-                        touchRun(connection, runId);
+                        publishRun(connection, runId);
+                        candidateRunId = null;
+                        try {
+                            int deletedRuns = cleanupOldRuns(connection, runId);
+                            if (deletedRuns > 0) {
+                                retentionNote = " | retention deleted-runs=" + deletedRuns;
+                            }
+                        } catch (SQLException ex) {
+                            logger.log(Level.WARNING, "Retention cleanup failed after snapshot publish.", ex);
+                            retentionNote = " | retention cleanup failed: " + ex.getClass().getSimpleName();
+                        }
                     } else {
+                        validateInputSafety(processed, kept);
                         resolverNote = " | dry-run: skipped write/cleanup/king/name-resolver";
                         banNote = " | bans dry-run: parsed=" + banFile.entries().size() + ", syncable=" + banFile.syncable();
                         knownNote = " | known dry-run: stats-source=" + knownStatsSourceUuids.size()
@@ -419,8 +451,18 @@ public final class ImportCoordinator implements AutoCloseable {
                     if (!resolverNote.isBlank()) {
                         message = message + resolverNote;
                     }
+                    if (!retentionNote.isBlank()) {
+                        message = message + retentionNote;
+                    }
                     success = true;
                 } finally {
+                    if (!success) {
+                        try {
+                            connection.rollback();
+                        } catch (SQLException ex) {
+                            logger.log(Level.FINE, "Rollback before lock release failed.", ex);
+                        }
+                    }
                     if (lockAcquired) {
                         try {
                             releaseDbLock(connection, settings.dbLockName());
@@ -433,6 +475,9 @@ public final class ImportCoordinator implements AutoCloseable {
             }
         } catch (Exception ex) {
             message = ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
+            if (candidateRunId != null) {
+                markRunFailed(candidateRunId, message);
+            }
             if (shuttingDown.get()) {
                 logger.log(Level.INFO, "Import stopped due to plugin shutdown: " + message);
             } else {
@@ -927,50 +972,120 @@ public final class ImportCoordinator implements AutoCloseable {
         }
     }
 
-    private long ensureRunId(Connection connection) throws SQLException {
-        Long activeRunId = null;
+    private Long findActiveRunId(Connection connection) throws SQLException {
         try (PreparedStatement stmt = connection.prepareStatement("SELECT active_run_id FROM site_state WHERE id=1");
              ResultSet rs = stmt.executeQuery()) {
             if (rs.next()) {
                 long value = rs.getLong(1);
                 if (!rs.wasNull()) {
-                    activeRunId = value;
+                    return value;
                 }
             }
         }
+        return null;
+    }
 
-        if (activeRunId == null) {
-            long newRunId;
-            try (PreparedStatement insert = connection.prepareStatement(
-                    "INSERT INTO import_run (generated_at, status) VALUES (NOW(), 'active')",
-                    PreparedStatement.RETURN_GENERATED_KEYS
-            )) {
-                insert.executeUpdate();
-                try (ResultSet keys = insert.getGeneratedKeys()) {
-                    if (!keys.next()) {
-                        throw new SQLException("Could not read generated run_id");
-                    }
-                    newRunId = keys.getLong(1);
-                }
-            }
-            try (PreparedStatement update = connection.prepareStatement(
-                    "UPDATE site_state SET active_run_id=? WHERE id=1"
-            )) {
-                update.setLong(1, newRunId);
-                update.executeUpdate();
-            }
-            connection.commit();
-            return newRunId;
-        }
-
-        try (PreparedStatement touch = connection.prepareStatement(
-                "UPDATE import_run SET generated_at=NOW(), status='active' WHERE id=?"
+    private long createLoadingRun(Connection connection) throws SQLException {
+        long newRunId;
+        try (PreparedStatement insert = connection.prepareStatement(
+                "INSERT INTO import_run (generated_at, status) VALUES (NOW(), 'loading')",
+                PreparedStatement.RETURN_GENERATED_KEYS
         )) {
-            touch.setLong(1, activeRunId);
-            touch.executeUpdate();
+            insert.executeUpdate();
+            try (ResultSet keys = insert.getGeneratedKeys()) {
+                if (!keys.next()) {
+                    throw new SQLException("Could not read generated run_id");
+                }
+                newRunId = keys.getLong(1);
+            }
         }
         connection.commit();
-        return activeRunId;
+        return newRunId;
+    }
+
+    private void publishRun(Connection connection, long runId) throws SQLException {
+        try (PreparedStatement touch = connection.prepareStatement(
+                "UPDATE import_run SET generated_at=NOW(), status='active' WHERE id=?"
+        );
+             PreparedStatement update = connection.prepareStatement(
+                     "UPDATE site_state SET active_run_id=? WHERE id=1"
+             )
+        ) {
+            touch.setLong(1, runId);
+            touch.executeUpdate();
+            update.setLong(1, runId);
+            update.executeUpdate();
+        }
+        connection.commit();
+    }
+
+    private void validateInputSafety(int processed, int kept) {
+        int minProcessed = settings.safetyMinProcessedFiles();
+        if (minProcessed > 0 && processed < minProcessed) {
+            throw new IllegalStateException("Stats input safety failed: processed files " + processed
+                    + " < configured minimum " + minProcessed);
+        }
+
+        int minKept = settings.safetyMinKeptPlayers();
+        if (minKept > 0 && kept < minKept) {
+            throw new IllegalStateException("Stats input safety failed: kept players " + kept
+                    + " < configured minimum " + minKept);
+        }
+    }
+
+    private void markRunFailed(long runId, String message) {
+        String note = message == null ? "Import failed" : message;
+        if (note.length() > 255) {
+            note = note.substring(0, 255);
+        }
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(
+                     "UPDATE import_run SET status='failed', note=? WHERE id=? AND status='loading'"
+             )) {
+            stmt.setString(1, note);
+            stmt.setLong(2, runId);
+            stmt.executeUpdate();
+            connection.commit();
+        } catch (SQLException ex) {
+            logger.log(Level.WARNING, "Could not mark failed import_run id=" + runId, ex);
+        }
+    }
+
+    private int cleanupOldRuns(Connection connection, long activeRunId) throws SQLException {
+        int keepRuns = settings.retentionKeepRuns();
+        if (keepRuns <= 0) {
+            return 0;
+        }
+
+        List<Long> keepIds = new ArrayList<>();
+        try (PreparedStatement stmt = connection.prepareStatement(
+                "SELECT id FROM import_run ORDER BY id DESC LIMIT ?"
+        )) {
+            stmt.setInt(1, keepRuns);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    keepIds.add(rs.getLong(1));
+                }
+            }
+        }
+        if (!keepIds.contains(activeRunId)) {
+            keepIds.add(activeRunId);
+        }
+        if (keepIds.isEmpty()) {
+            return 0;
+        }
+
+        String placeholders = String.join(",", Collections.nCopies(keepIds.size(), "?"));
+        String sql = "DELETE FROM import_run WHERE id NOT IN (" + placeholders + ")";
+        int deleted;
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            for (int i = 0; i < keepIds.size(); i++) {
+                stmt.setLong(i + 1, keepIds.get(i));
+            }
+            deleted = stmt.executeUpdate();
+        }
+        connection.commit();
+        return deleted;
     }
 
     private long requireActiveRunId(Connection connection) throws SQLException {
@@ -1126,33 +1241,6 @@ public final class ImportCoordinator implements AutoCloseable {
         connection.commit();
     }
 
-    private void recreateTmpSeen(Connection connection) throws SQLException {
-        // Connection-local temp table tracks all UUIDs seen in this run for cleanupMissing().
-        try (PreparedStatement drop = connection.prepareStatement("DROP TEMPORARY TABLE IF EXISTS tmp_seen");
-             PreparedStatement create = connection.prepareStatement(
-                     "CREATE TEMPORARY TABLE tmp_seen (uuid BINARY(16) PRIMARY KEY) ENGINE=InnoDB"
-             )) {
-            drop.execute();
-            create.execute();
-        }
-        connection.commit();
-    }
-
-    private void flushSeen(Connection connection, List<UUID> seenBuffer) throws SQLException {
-        if (seenBuffer.isEmpty()) {
-            return;
-        }
-        try (PreparedStatement stmt = connection.prepareStatement("INSERT IGNORE INTO tmp_seen (uuid) VALUES (?)")) {
-            for (UUID uuid : seenBuffer) {
-                stmt.setBytes(1, UuidCodec.toBytes(uuid));
-                stmt.addBatch();
-            }
-            stmt.executeBatch();
-        }
-        connection.commit();
-        seenBuffer.clear();
-    }
-
     private void flushProfiles(
             Connection connection,
             List<ProfileRow> profileRows,
@@ -1219,6 +1307,131 @@ public final class ImportCoordinator implements AutoCloseable {
         }
         connection.commit();
         profileRows.clear();
+    }
+
+    private void copyPreviousSnapshotBatch(
+            Connection connection,
+            long fromRunId,
+            long toRunId,
+            List<UUID> uuids,
+            boolean hasNameSource,
+            boolean hasNameCheckedAt
+    ) throws SQLException {
+        if (uuids.isEmpty()) {
+            return;
+        }
+        copyPreviousProfilesBatch(connection, fromRunId, toRunId, uuids, hasNameSource, hasNameCheckedAt);
+        copyPreviousStatsAndMetricsBatch(connection, fromRunId, toRunId, uuids);
+    }
+
+    private void copyPreviousProfilesBatch(
+            Connection connection,
+            long fromRunId,
+            long toRunId,
+            List<UUID> uuids,
+            boolean hasNameSource,
+            boolean hasNameCheckedAt
+    ) throws SQLException {
+        for (int i = 0; i < uuids.size(); i += 1500) {
+            List<UUID> chunk = uuids.subList(i, Math.min(uuids.size(), i + 1500));
+            String placeholders = String.join(",", Collections.nCopies(chunk.size(), "?"));
+            final String sql;
+            if (hasNameSource && hasNameCheckedAt) {
+                sql = """
+                        INSERT INTO player_profile (run_id, uuid, name, name_lc, name_source, name_checked_at, last_seen)
+                        SELECT ?, uuid, name, name_lc, name_source, name_checked_at, last_seen
+                        FROM player_profile
+                        WHERE run_id=? AND uuid IN (%s)
+                        ON DUPLICATE KEY UPDATE
+                          name = VALUES(name),
+                          name_lc = VALUES(name_lc),
+                          name_source = VALUES(name_source),
+                          name_checked_at = VALUES(name_checked_at),
+                          last_seen = VALUES(last_seen)
+                        """.formatted(placeholders);
+            } else if (hasNameSource) {
+                sql = """
+                        INSERT INTO player_profile (run_id, uuid, name, name_lc, name_source, last_seen)
+                        SELECT ?, uuid, name, name_lc, name_source, last_seen
+                        FROM player_profile
+                        WHERE run_id=? AND uuid IN (%s)
+                        ON DUPLICATE KEY UPDATE
+                          name = VALUES(name),
+                          name_lc = VALUES(name_lc),
+                          name_source = VALUES(name_source),
+                          last_seen = VALUES(last_seen)
+                        """.formatted(placeholders);
+            } else {
+                sql = """
+                        INSERT INTO player_profile (run_id, uuid, name, name_lc, last_seen)
+                        SELECT ?, uuid, name, name_lc, last_seen
+                        FROM player_profile
+                        WHERE run_id=? AND uuid IN (%s)
+                        ON DUPLICATE KEY UPDATE
+                          name = VALUES(name),
+                          name_lc = VALUES(name_lc),
+                          last_seen = VALUES(last_seen)
+                        """.formatted(placeholders);
+            }
+            try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                bindRunCopyChunk(stmt, toRunId, fromRunId, chunk);
+                stmt.executeUpdate();
+            }
+        }
+        connection.commit();
+    }
+
+    private void copyPreviousStatsAndMetricsBatch(
+            Connection connection,
+            long fromRunId,
+            long toRunId,
+            List<UUID> uuids
+    ) throws SQLException {
+        if (uuids.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < uuids.size(); i += 1500) {
+            List<UUID> chunk = uuids.subList(i, Math.min(uuids.size(), i + 1500));
+            String placeholders = String.join(",", Collections.nCopies(chunk.size(), "?"));
+
+            String statsSql = """
+                    INSERT INTO player_stats (run_id, uuid, stats_gzip, stats_sha1, updated_at)
+                    SELECT ?, uuid, stats_gzip, stats_sha1, updated_at
+                    FROM player_stats
+                    WHERE run_id=? AND uuid IN (%s)
+                    ON DUPLICATE KEY UPDATE
+                      stats_gzip = VALUES(stats_gzip),
+                      stats_sha1 = VALUES(stats_sha1),
+                      updated_at = VALUES(updated_at)
+                    """.formatted(placeholders);
+            try (PreparedStatement stmt = connection.prepareStatement(statsSql)) {
+                bindRunCopyChunk(stmt, toRunId, fromRunId, chunk);
+                stmt.executeUpdate();
+            }
+
+            String metricsSql = """
+                    INSERT INTO metric_value (run_id, metric_id, uuid, value)
+                    SELECT ?, metric_id, uuid, value
+                    FROM metric_value
+                    WHERE run_id=? AND uuid IN (%s)
+                    ON DUPLICATE KEY UPDATE value = VALUES(value)
+                    """.formatted(placeholders);
+            try (PreparedStatement stmt = connection.prepareStatement(metricsSql)) {
+                bindRunCopyChunk(stmt, toRunId, fromRunId, chunk);
+                stmt.executeUpdate();
+            }
+        }
+        connection.commit();
+        uuids.clear();
+    }
+
+    private void bindRunCopyChunk(PreparedStatement stmt, long toRunId, long fromRunId, List<UUID> chunk) throws SQLException {
+        stmt.setLong(1, toRunId);
+        stmt.setLong(2, fromRunId);
+        int index = 3;
+        for (UUID uuid : chunk) {
+            stmt.setBytes(index++, UuidCodec.toBytes(uuid));
+        }
     }
 
     private void flushChangedBatch(
@@ -1292,36 +1505,6 @@ public final class ImportCoordinator implements AutoCloseable {
         changedUuids.clear();
         statsRows.clear();
         metricRows.clear();
-    }
-
-    private void cleanupMissing(Connection connection, long runId) throws SQLException {
-        // Anything not seen in tmp_seen during this run is removed from the active snapshot.
-        String deleteProfiles = """
-                DELETE p FROM player_profile p
-                LEFT JOIN tmp_seen s ON p.uuid = s.uuid
-                WHERE p.run_id=? AND s.uuid IS NULL
-                """;
-        String deleteStats = """
-                DELETE ps FROM player_stats ps
-                LEFT JOIN tmp_seen s ON ps.uuid = s.uuid
-                WHERE ps.run_id=? AND s.uuid IS NULL
-                """;
-        String deleteMetrics = """
-                DELETE mv FROM metric_value mv
-                LEFT JOIN tmp_seen s ON mv.uuid = s.uuid
-                WHERE mv.run_id=? AND s.uuid IS NULL
-                """;
-        try (PreparedStatement p = connection.prepareStatement(deleteProfiles);
-             PreparedStatement ps = connection.prepareStatement(deleteStats);
-             PreparedStatement mv = connection.prepareStatement(deleteMetrics)) {
-            p.setLong(1, runId);
-            p.executeUpdate();
-            ps.setLong(1, runId);
-            ps.executeUpdate();
-            mv.setLong(1, runId);
-            mv.executeUpdate();
-        }
-        connection.commit();
     }
 
     private void recomputeKingPoints(Connection connection, long runId, List<String> metricIds) throws SQLException {
@@ -1446,21 +1629,11 @@ public final class ImportCoordinator implements AutoCloseable {
         }
         String sql = """
                 INSERT INTO metric_def (id, label, category, unit, divisor, decimals, sort_order, enabled)
-                VALUES (?, 'Server-Koenig', 'Allgemein', 'Punkte', 1, 0, 0, 1)
+                VALUES (?, 'Server-König', 'Allgemein', 'Punkte', 1, 0, 0, 1)
                 """;
         try (PreparedStatement insert = connection.prepareStatement(sql)) {
             insert.setString(1, kingMetricId);
             insert.executeUpdate();
-        }
-        connection.commit();
-    }
-
-    private void touchRun(Connection connection, long runId) throws SQLException {
-        try (PreparedStatement stmt = connection.prepareStatement(
-                "UPDATE import_run SET generated_at=NOW(), status='active' WHERE id=?"
-        )) {
-            stmt.setLong(1, runId);
-            stmt.executeUpdate();
         }
         connection.commit();
     }

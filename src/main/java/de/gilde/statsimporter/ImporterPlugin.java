@@ -44,7 +44,7 @@ public final class ImporterPlugin extends JavaPlugin {
 
     public synchronized String reloadRuntime() {
         if (importCoordinator != null && importCoordinator.isRunning()) {
-            return "Import laeuft gerade. Reload erst nach Abschluss moeglich.";
+            return "Import läuft gerade. Reload erst nach Abschluss möglich.";
         }
 
         try {

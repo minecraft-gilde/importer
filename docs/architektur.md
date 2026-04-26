@@ -83,29 +83,27 @@ Beim Stop (`onDisable`) werden beide Scheduler, Workerpools und DB-Pool sauber g
 4. usercache-Namen werden geladen
 5. Ban-Einträge aus `banned-players.json` werden geladen
 6. DB Advisory Lock via `GET_LOCK` wird angefordert
-7. Aktive `run_id` wird ermittelt oder neu erstellt (`site_state`)
+7. Bisher aktive `run_id` wird ermittelt und ein neuer `loading`-Run angelegt
 8. Aktive Metrikquellen werden aus DB geladen (`metric_def.enabled=1`)
-9. Vorhandene SHA1-Hashes und Profile werden in Maps geladen
-10. Temp-Tabelle `tmp_seen` wird neu erstellt
-11. Alle `*.json`-Dateien werden gescannt
-12. UUID aus Dateiname lesen
-13. Optional über `exclude-uuids` verwerfen
-14. JSON lesen, Stats extrahieren, `_wall_banner` Keys bereinigen
-15. Bei Parse-Fehlern wird die UUID trotzdem als `seen` markiert, damit kein Cleanup-Verlust entsteht
-16. Mindestspielzeit prüfen (`minecraft:custom.minecraft:play_time`)
-17. Profilzeile erzeugen (Name aus usercache, DB oder Fallback)
-18. Canonical JSON serialisieren (sortierte Keys)
-19. SHA1 bilden und gegen DB vergleichen
-20. Nur geänderte Spieler an Workerpool für Berechnung senden
-21. Ergebnisse laufend in Batches in DB flushen
-22. Nach Scan Restarbeiten flushen
-23. Daten verwaister Spieler über `tmp_seen` bereinigen
-24. Known-Players werden per Upsert in `player_known` synchronisiert (persistent, run-unabhängig)
-25. Ban-Daten werden in `player_ban` synchronisiert (pro Run kompletter Snapshot)
-26. Optional "king" Punkte neu berechnen
-27. Optional Name-Resolver direkt nach Import mit eigenem Budget (`after-import-max-per-run`) auf `player_profile` plus Restbudget auf `player_known`
-28. Laufzeitstempel aktualisieren und Summary setzen
-29. DB Lock freigeben
+9. Vorhandene SHA1-Hashes und Profile aus dem bisherigen Snapshot werden in Maps geladen
+10. Alle `*.json`-Dateien werden gescannt
+11. UUID aus Dateiname lesen
+12. Optional über `exclude-uuids` verwerfen
+13. JSON lesen, Stats extrahieren, `_wall_banner` Keys bereinigen
+14. Bei Parse-Fehlern wird der bisherige Spieler-Snapshot in den neuen Run kopiert
+15. Mindestspielzeit prüfen (`minecraft:custom.minecraft:play_time`)
+16. Profilzeile erzeugen (Name aus usercache, DB oder Fallback)
+17. Canonical JSON serialisieren (sortierte Keys)
+18. SHA1 bilden und gegen bisherigen Snapshot vergleichen
+19. Unveränderte Spieler werden kopiert, geänderte Spieler im Workerpool neu berechnet
+20. Ergebnisse laufend in Batches in den neuen Run flushen
+21. Safety-Grenzen prüfen
+22. Known-Players werden per Upsert in `player_known` synchronisiert (persistent, run-unabhängig)
+23. Ban-Daten werden in `player_ban` synchronisiert (pro Run kompletter Snapshot)
+24. Optional "king" Punkte neu berechnen
+25. Optional Name-Resolver direkt nach Import mit eigenem Budget (`after-import-max-per-run`) auf `player_profile` plus Restbudget auf `player_known`
+26. `site_state.active_run_id` auf den neuen Run umschalten
+27. DB Lock freigeben
 
 ## Parallelisierung und Backpressure
 
@@ -120,7 +118,7 @@ Das Design verhindert sowohl unkontrolliertes Wachstum von Task-Queues als auch 
 
 - DB `autoCommit=false`, explizite Commits nach sinnvollen Batch-Schritten
 - Hash-Skip verhindert unnötige Rewrites
-- `cleanupMissing` entfernt Spieler, die nicht mehr gesehen wurden
+- Nicht mehr vorhandene Spieler werden im neuen Snapshot nicht angelegt; der alte Snapshot bleibt bis zur Umschaltung sichtbar
 - Parse-Fehler löschen keine bestehenden Spielerdaten mehr implizit
 - Bei Fehlern wird `ImportSummary` trotzdem final gesetzt, damit Statusabfragen belastbar bleiben
 
@@ -175,6 +173,12 @@ Wichtige Konsequenzen:
 - kein Cleanup fehlender Spieler
 - keine King-Neuberechnung
 - kein nachgelagerter Resolver-Lauf
+
+## Snapshot-Veröffentlichung
+
+Normale Importe schreiben nicht in-place in den sichtbaren Snapshot. Der Importer legt einen neuen `import_run` mit Status `loading` an, kopiert unveränderte Spieler aus dem bisherigen aktiven Lauf, berechnet geänderte Spieler neu und schaltet `site_state.active_run_id` erst nach erfolgreichem Abschluss um.
+
+Vor der Umschaltung greifen die Safety-Grenzen `import.safety.min-processed-files` und `import.safety.min-kept-players`. Wenn ein Stats-Pfad leer oder offensichtlich falsch ist, bleibt der bisherige Snapshot aktiv.
 
 ## Commit- und Fehlergrenzen
 

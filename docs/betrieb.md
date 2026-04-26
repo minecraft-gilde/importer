@@ -81,6 +81,11 @@ Wenn `import.enabled=true`, startet das Plugin einen periodischen Async-Import-T
 
 - Initial direkt beim Pluginstart
 - danach alle `import.interval-seconds`
+- Default: `14400` Sekunden (4 Stunden)
+
+Für Live-Betrieb ist ein Intervall von 3-4 Stunden sinnvoll: deutlich aktueller als zweimal täglich, aber ohne unnötige Dauerlast auf Server, DB und Mojang-Resolver. Falls die Website keine nahezu-live Ranglisten braucht, ist `14400` der ruhigere Startwert.
+
+Mit dem Snapshot-Modell erzeugt jeder erfolgreiche Import einen neuen Run. `import.retention.keep-runs: 1` hält nur den zuletzt veröffentlichten Snapshot und löscht ältere Runs samt abhängigen Snapshot-Daten automatisch.
 
 Wenn `import.name-resolver.maintenance-enabled=true`, startet zusätzlich ein periodischer Async-Resolver-Task:
 
@@ -127,9 +132,10 @@ Relevante Logereignisse:
 3. Konfiguration für Zielumgebung setzen (`database.*`, `import.*`)
 4. Manuellen Lauf starten: `/statsimport run`
 5. Laufstatus prüfen: `/statsimport status`
-6. SQL-Stichprobe auf aktive Views und Top-Metriken
-7. Resolver-Budgets aktivieren und beobachten (falls Namenspflege gewünscht)
-8. Erst danach Timerbetrieb dauerhaft freigeben
+6. Safety-Grenzen passend zur echten Servergröße setzen (`import.safety.min-processed-files`, `import.safety.min-kept-players`)
+7. SQL-Stichprobe auf aktive Views und Top-Metriken
+8. Resolver-Budgets aktivieren und beobachten (falls Namenspflege gewünscht)
+9. Erst danach Timerbetrieb dauerhaft freigeben
 
 ## Runbook: Wiederanlauf nach Fehler/Abbruch
 

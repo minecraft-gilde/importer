@@ -34,6 +34,8 @@ Die gesamte Laufzeitkonfiguration liegt in:
 Wichtig:
 
 - `import.interval-seconds`: Auto-Import-Intervall in Sekunden
+- `import.safety.*`: Mindestwerte gegen falsche/leere Stats-Pfade
+- `import.retention.keep-runs`: Aufbewahrung alter Snapshot-Runs
 - `import.stats-dir`: `auto` nutzt den Standardpfad des Servers (`<world>/stats`)
 - `import.usercache-path`: `auto` nutzt `<server-root>/usercache.json`
 - `import.banned-players-path`: `auto` nutzt `<server-root>/banned-players.json`

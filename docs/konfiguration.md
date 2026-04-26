@@ -17,8 +17,9 @@ Default-Werte im Repository:
 | Key | Default | Bedeutung |
 |---|---:|---|
 | `import.enabled` | `true` | Aktiviert periodischen Timer-Import beim Pluginstart |
-| `import.interval-seconds` | `60` | Intervall des Timer-Imports in Sekunden (Minimum 1) |
+| `import.interval-seconds` | `14400` | Intervall des Timer-Imports in Sekunden (Minimum 1; 14400 = 4 Stunden) |
 | `import.ignore-hash-on-timer` | `false` | Ignoriert SHA1-Hashprüfung bei Timerläufen |
+| `import.retention.keep-runs` | `1` | Anzahl aufzubewahrender veröffentlichter Import-Snapshots (`1` = nur aktueller Run, `0` = keine automatische Löschung) |
 
 ## Inputpfade
 
@@ -33,6 +34,8 @@ Default-Werte im Repository:
 | Key | Default | Bedeutung |
 |---|---:|---|
 | `import.min-play-ticks` | `72000` | Mindestspielzeit für Import (Ticks) |
+| `import.safety.min-processed-files` | `1` | Bricht vor Snapshot-Veröffentlichung ab, wenn weniger Stats-Dateien gefunden wurden (`0` = deaktiviert) |
+| `import.safety.min-kept-players` | `1` | Bricht vor Snapshot-Veröffentlichung ab, wenn weniger Spieler nach Filter übernommen wurden (`0` = deaktiviert) |
 | `import.exclude-uuids` | `[]` | UUID-Liste, die komplett ignoriert wird |
 
 Hinweis: UUIDs werden flexibel geparst (mit oder ohne Bindestriche, case-insensitive). Ungültige Einträge werden ignoriert.
@@ -43,7 +46,6 @@ Hinweis: UUIDs werden flexibel geparst (mit oder ohne Bindestriche, case-insensi
 |---|---:|---|
 | `import.worker-threads` | `6` | Anzahl Berechnungs-Threads für Metriken |
 | `import.max-inflight-calculations` | `3000` | Maximal gleichzeitig ausstehende Berechnungen |
-| `import.flush-seen` | `2000` | Batch-Größe für `tmp_seen` |
 | `import.flush-profiles` | `2000` | Batch-Größe für `player_profile` |
 | `import.flush-changed` | `800` | Batch-Größe für geänderte Spieler (`player_stats` + `metric_value`) |
 
@@ -73,7 +75,7 @@ Hinweis: Die Liste wird intern auf mindestens 3 Werte normalisiert. Fehlende Wer
 | `import.name-resolver.after-import-enabled` | `true` | Aktiviert Resolver-Lauf direkt nach Import |
 | `import.name-resolver.after-import-max-per-run` | `300` | Budget direkt nach Import (klein halten, um Importthread zu entlasten) |
 | `import.name-resolver.maintenance-enabled` | `true` | Aktiviert separaten Hintergrund-Worker für Namenspflege |
-| `import.name-resolver.maintenance-interval-seconds` | `300` | Intervall des Hintergrund-Workers |
+| `import.name-resolver.maintenance-interval-seconds` | `14400` | Intervall des Hintergrund-Workers |
 | `import.name-resolver.maintenance-max-per-run` | `500` | Budget pro Hintergrundlauf |
 | `import.name-resolver.refresh-days` | `30` | Re-Check-Intervall in Tagen (`0` = nur fehlende/Fallback-Namen) |
 | `import.name-resolver.sleep-ms` | `150` | Pause zwischen Requests (Rate-Limit-Schutz) |
@@ -148,7 +150,6 @@ Einige Werte werden beim Laden begrenzt:
 
 - `worker-threads: 2`
 - `max-inflight-calculations: 400`
-- `flush-seen: 500`
 - `flush-profiles: 500`
 - `flush-changed: 200`
 
@@ -156,7 +157,6 @@ Einige Werte werden beim Laden begrenzt:
 
 - `worker-threads: 4-6`
 - `max-inflight-calculations: 1000-3000`
-- `flush-seen: 1000-2000`
 - `flush-profiles: 1000-2000`
 - `flush-changed: 400-1000`
 
@@ -164,7 +164,7 @@ Einige Werte werden beim Laden begrenzt:
 
 - `worker-threads: 8-12` (abh. von CPU)
 - `max-inflight-calculations: 4000+`
-- `flush-seen/profiles: 2000-5000`
+- `flush-profiles: 2000-5000`
 - `flush-changed: 1000-3000`
 
 Wichtig: Erhöhe Werte schrittweise und beobachte DB-Latenzen, GC-Verhalten und Importdauer.
@@ -176,10 +176,11 @@ Diese Übersicht hilft bei der Einschätzung von Risiko und Beobachtungsbedarf.
 | Bereich | Typische Keys | Wirkung | Nach Änderung prüfen |
 |---|---|---|---|
 | Laufsteuerung | `enabled`, `interval-seconds`, `ignore-hash-on-timer` | Häufigkeit und Rechenlast der Läufe | Importdauer, Überlappungen, Lock-Wartezeiten |
+| Retention | `retention.keep-runs` | DB-Wachstum durch Snapshot-Historie | Anzahl `import_run`, DB-Größe, Rollback-Bedarf |
 | Inputpfade | `stats-dir`, `usercache-path`, `banned-players-path` | Datenvollständigkeit und Namensqualität | geladene Spielerzahl, Name-Fallback-Anteil, Ban-Snapshot |
 | Filter | `min-play-ticks`, `exclude-uuids` | Sichtbare Datenbasis | `kept`/`changed`, Spielerzahl in Views |
 | Parallelität | `worker-threads`, `max-inflight-calculations` | CPU-/RAM-Last und Durchsatz | CPU, Heap, DB-Latenz, Laufzeit |
-| Batching | `flush-seen`, `flush-profiles`, `flush-changed` | Write-Pattern und Transaktionsgröße | Roundtrips, Lock-Dauer, Fehlerquote |
+| Batching | `flush-profiles`, `flush-changed` | Write-Pattern und Transaktionsgröße | Roundtrips, Lock-Dauer, Fehlerquote |
 | Locking | `db-lock-name`, `db-lock-timeout-seconds` | Verhalten bei Parallelzugriff | Lock-Fehler, Wartezeiten |
 | King | `king-enabled`, `king-metric-id`, `king-points` | Leaderboard-Aggregation | Plausibilität `king`-Werte |
 | Resolver | `name-resolver.*` | Namensqualität vs. Upstream-Last | resolved/failed/skipped, API-Rate-Limits |

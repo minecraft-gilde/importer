@@ -60,7 +60,7 @@ public final class StatsImportCommand implements BasicCommand {
 
         boolean started = plugin.importCoordinator().triggerImport("manual:" + sender.getName(), ignoreHash, dryRun);
         if (!started) {
-            sender.sendMessage("Import/Resolver laeuft bereits.");
+            sender.sendMessage("Import/Resolver läuft bereits.");
             return;
         }
         sender.sendMessage("Import gestartet."
@@ -93,10 +93,10 @@ public final class StatsImportCommand implements BasicCommand {
                 maxOverride
         );
         if (!started) {
-            sender.sendMessage("Import/Resolver laeuft bereits.");
+            sender.sendMessage("Import/Resolver läuft bereits.");
             return;
         }
-        sender.sendMessage("Namensaufloesung gestartet."
+        sender.sendMessage("Namensauflösung gestartet."
                 + (maxOverride != null ? " (max=" + maxOverride + ")" : ""));
     }
 

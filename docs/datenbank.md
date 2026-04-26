@@ -60,14 +60,17 @@ Beim Bootstrap validiert das Plugin Pflichtobjekte und kann Schema/Seeds automat
 
 ## Import-Schreibstrategie
 
-Das Plugin arbeitet in-place auf einer aktiven `run_id`:
+Das Plugin baut jeden Import als neuen Snapshot auf:
 
-1. aktive `run_id` lesen oder neu anlegen
-2. Daten in derselben `run_id` aktualisieren
-3. verwaiste Spieler über `tmp_seen` bereinigen
-4. `generated_at` des Laufs aktualisieren
+1. bisher aktive `run_id` aus `site_state` lesen
+2. neuen `import_run` mit Status `loading` anlegen
+3. geänderte Spieler neu berechnen und unveränderte Spieler aus dem bisherigen Snapshot kopieren
+4. Sicherheitsgrenzen für Inputgröße und übernommene Spieler prüfen
+5. neuen Lauf auf `active` setzen und `site_state.active_run_id` atomar umschalten
 
-Dadurch können Abfragen auf den Views stabil bleiben, ohne zwischen Run-IDs umzuschalten.
+Dadurch sehen Abfragen auf den Views während eines Imports weiterhin den letzten erfolgreichen Snapshot. Ein fehlgeschlagener Lauf bleibt unveröffentlicht und wird als `failed` markiert.
+
+Nach erfolgreicher Veröffentlichung räumt `import.retention.keep-runs` ältere Runs auf. Die abhängigen Snapshot-Tabellen werden über Foreign Keys mit `ON DELETE CASCADE` bereinigt.
 
 ## Konsistenz und Sperren
 
