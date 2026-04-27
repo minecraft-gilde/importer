@@ -78,7 +78,9 @@ public final class ImportCoordinator implements AutoCloseable {
     private final ObjectMapper objectMapper;
     private final HttpClient nameResolverHttpClient;
     private final AtomicBoolean running;
+    private final AtomicBoolean importQueuedOrRunning;
     private final AtomicBoolean shuttingDown;
+    private final NameResolveQueue nameResolveQueue;
 
     private volatile ImportSummary lastSummary;
 
@@ -106,7 +108,9 @@ public final class ImportCoordinator implements AutoCloseable {
                 .connectTimeout(Duration.ofMillis(settings.importSettings().nameResolverConnectTimeoutMs()))
                 .build();
         this.running = new AtomicBoolean(false);
+        this.importQueuedOrRunning = new AtomicBoolean(false);
         this.shuttingDown = new AtomicBoolean(false);
+        this.nameResolveQueue = new NameResolveQueue();
         this.lastSummary = ImportSummary.neverRan();
     }
 
@@ -119,7 +123,7 @@ public final class ImportCoordinator implements AutoCloseable {
             logger.fine("Skip import trigger during shutdown. reason=" + reason);
             return false;
         }
-        if (!running.compareAndSet(false, true)) {
+        if (!importQueuedOrRunning.compareAndSet(false, true)) {
             logger.fine("Skip import trigger because another run is active. reason=" + reason);
             return false;
         }
@@ -136,16 +140,17 @@ public final class ImportCoordinator implements AutoCloseable {
             logger.fine("Skip name-resolve trigger during shutdown. reason=" + reason);
             return false;
         }
-        if (!running.compareAndSet(false, true)) {
-            logger.fine("Skip name-resolve trigger because another run is active. reason=" + reason);
-            return false;
+        boolean shouldSubmit = nameResolveQueue.offer(reason, maxPerRunOverride);
+        if (shouldSubmit) {
+            CompletableFuture.runAsync(this::runQueuedNameResolve, importExecutor);
+        } else {
+            logger.fine("Merged name-resolve trigger into queued run. reason=" + reason);
         }
-        CompletableFuture.runAsync(() -> runNameResolveOnly(reason, maxPerRunOverride), importExecutor);
         return true;
     }
 
     public boolean isRunning() {
-        return running.get();
+        return running.get() || importQueuedOrRunning.get() || nameResolveQueue.hasQueuedRequest();
     }
 
     public ImportSummary lastSummary() {
@@ -166,12 +171,14 @@ public final class ImportCoordinator implements AutoCloseable {
     }
 
     private void runImport(String reason, boolean ignoreHashOverride, boolean dryRun) {
+        running.set(true);
         Instant startedAt = Instant.now();
         String message = dryRun ? "Dry-run OK (no DB writes)" : "OK";
         boolean success = false;
         int processed = 0;
         int kept = 0;
         int changed = 0;
+        int parseErrors = 0;
         boolean lockAcquired = false;
         String resolverNote = "";
         String banNote = "";
@@ -273,6 +280,7 @@ public final class ImportCoordinator implements AutoCloseable {
                             try {
                                 root = objectMapper.readValue(file.toFile(), MAP_TYPE);
                             } catch (Exception ex) {
+                                parseErrors++;
                                 if (!dryRun) {
                                     // Keep previous snapshot rows for unreadable files until parsing succeeds again.
                                     if (previousRunId != null) {
@@ -290,6 +298,7 @@ public final class ImportCoordinator implements AutoCloseable {
                                     }
                                 }
                                 logger.log(Level.WARNING, "Cannot parse stats file " + file.getFileName(), ex);
+                                validateParseErrorSafety(parseErrors);
                                 continue;
                             }
 
@@ -399,24 +408,9 @@ public final class ImportCoordinator implements AutoCloseable {
                         }
 
                         if (settings.nameResolverEnabled() && settings.nameResolverAfterImportEnabled()) {
-                            try {
-                                int maxAfterImport = settings.nameResolverAfterImportMaxPerRun();
-                                NameResolverResult result = resolveNamesFromMojang(
-                                        connection,
-                                        runId,
-                                        hasNameSource,
-                                        hasNameCheckedAt,
-                                        maxAfterImport
-                                );
-                                resolverNote = " | names candidates=" + result.candidates()
-                                        + ", resolved=" + result.resolved()
-                                        + ", failed=" + result.failed()
-                                        + ", skipped=" + result.skipped()
-                                        + ", max=" + maxAfterImport;
-                            } catch (Exception ex) {
-                                logger.log(Level.WARNING, "Name resolver failed (import data remains committed).", ex);
-                                resolverNote = " | names resolver failed: " + ex.getClass().getSimpleName();
-                            }
+                            int maxAfterImport = settings.nameResolverAfterImportMaxPerRun();
+                            triggerNameResolve("after-import:" + reason, maxAfterImport);
+                            resolverNote = " | names queued max=" + maxAfterImport;
                         } else if (settings.nameResolverEnabled()) {
                             resolverNote = " | names after-import disabled";
                         }
@@ -453,6 +447,9 @@ public final class ImportCoordinator implements AutoCloseable {
                     }
                     if (!retentionNote.isBlank()) {
                         message = message + retentionNote;
+                    }
+                    if (parseErrors > 0) {
+                        message = message + " | parse-errors=" + parseErrors;
                     }
                     success = true;
                 } finally {
@@ -495,14 +492,25 @@ public final class ImportCoordinator implements AutoCloseable {
                     changed
             );
             lastSummary = summary;
+            importQueuedOrRunning.set(false);
             running.set(false);
             logger.info("Import finished. success=" + success
                     + ", reason=" + reason
                     + ", processed=" + processed
                     + ", kept=" + kept
                     + ", changed=" + changed
+                    + ", parseErrors=" + parseErrors
                     + ", duration=" + summary.durationSeconds() + "s");
         }
+    }
+
+    private void runQueuedNameResolve() {
+        NameResolveQueue.NameResolveRequest request = nameResolveQueue.poll();
+        if (request == null || shuttingDown.get()) {
+            return;
+        }
+        running.set(true);
+        runNameResolveOnly(request.reason(), request.maxPerRunOverride());
     }
 
     private void runNameResolveOnly(String reason, Integer maxPerRunOverride) {
@@ -1030,6 +1038,14 @@ public final class ImportCoordinator implements AutoCloseable {
         if (minKept > 0 && kept < minKept) {
             throw new IllegalStateException("Stats input safety failed: kept players " + kept
                     + " < configured minimum " + minKept);
+        }
+    }
+
+    private void validateParseErrorSafety(int parseErrors) {
+        int maxParseErrors = settings.safetyMaxParseErrors();
+        if (maxParseErrors >= 0 && parseErrors > maxParseErrors) {
+            throw new IllegalStateException("Stats input safety failed: parse errors " + parseErrors
+                    + " > configured maximum " + maxParseErrors);
         }
     }
 

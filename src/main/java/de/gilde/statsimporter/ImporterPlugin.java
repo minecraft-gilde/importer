@@ -10,6 +10,7 @@ import de.gilde.statsimporter.importer.ImportScheduler;
 import de.gilde.statsimporter.importer.NameMaintenanceScheduler;
 import java.io.File;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -76,7 +77,12 @@ public final class ImporterPlugin extends JavaPlugin {
         }
         settings = ConfigLoader.load(getConfig());
         databaseManager = new DatabaseManager(settings.databaseSettings());
-        SchemaBootstrapper bootstrapper = new SchemaBootstrapper(this, databaseManager.dataSource(), settings.bootstrapSettings());
+        SchemaBootstrapper bootstrapper = new SchemaBootstrapper(
+                this,
+                databaseManager.dataSource(),
+                settings.bootstrapSettings(),
+                Set.of(settings.importSettings().kingMetricId())
+        );
         try {
             bootstrapper.ensureReady();
         } catch (Exception ex) {

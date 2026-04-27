@@ -91,6 +91,12 @@ Seed-Import ist idempotent:
 - `metric_def`: Upsert auf ID
 - `metric_source`: Upsert auf `(metric_id, section, mc_key)` mit Gewichtsupdate
 
+Bei `bootstrap.sync-seeds: true` wird die Seed-Datei zusätzlich als Sollzustand behandelt:
+
+- entfernte `metric_source`-Einträge werden gelöscht
+- Metriken, die nicht mehr in `metric-seeds.yml` enthalten sind, werden deaktiviert
+- geschützte Laufzeitmetriken wie `king` bleiben erhalten
+
 ## Nützliche SQL-Checks
 
 ## Aktive Run-ID

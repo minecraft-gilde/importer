@@ -18,6 +18,7 @@ public record PluginSettings(
             int minPlayTicks,
             int safetyMinProcessedFiles,
             int safetyMinKeptPlayers,
+            int safetyMaxParseErrors,
             int workerThreads,
             int maxInflightCalculations,
             int flushProfiles,
@@ -60,6 +61,7 @@ public record PluginSettings(
             boolean verifySchema,
             boolean seedOnMissingSchema,
             boolean seedIfMetricDefEmpty,
+            boolean syncSeeds,
             String seedFile
     ) {
     }

@@ -17,6 +17,8 @@
     min-processed-files: 1
     # Mindestens nach min-play-ticks übernommene Spieler.
     min-kept-players: 1
+    # Maximal tolerierte kaputte Stats-JSONs (-1 = deaktiviert, 0 = keine tolerieren).
+    max-parse-errors: 0
   # Anzahl Threads für Berechnung geänderter Spieler.
   worker-threads: 6
   # Maximale Anzahl gleichzeitiger, noch nicht fertiger Berechnungen.
@@ -93,5 +95,7 @@ bootstrap:
   seed-on-missing-schema: true
   # Importiert metric-seeds, wenn metric_def leer ist.
   seed-if-metric-def-empty: true
+  # Synchronisiert metric_def/metric_source mit metric-seeds.yml bei jedem Start.
+  sync-seeds: true
   # Seed-Datei (relativ zum Plugin-Ordner oder absoluter Pfad).
   seed-file: "metric-seeds.yml"

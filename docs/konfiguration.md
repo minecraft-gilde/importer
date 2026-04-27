@@ -36,6 +36,7 @@ Default-Werte im Repository:
 | `import.min-play-ticks` | `72000` | Mindestspielzeit für Import (Ticks) |
 | `import.safety.min-processed-files` | `1` | Bricht vor Snapshot-Veröffentlichung ab, wenn weniger Stats-Dateien gefunden wurden (`0` = deaktiviert) |
 | `import.safety.min-kept-players` | `1` | Bricht vor Snapshot-Veröffentlichung ab, wenn weniger Spieler nach Filter übernommen wurden (`0` = deaktiviert) |
+| `import.safety.max-parse-errors` | `0` | Bricht vor Snapshot-Veröffentlichung ab, wenn mehr Stats-JSONs nicht lesbar sind (`0` = keine tolerieren, `-1` = deaktiviert) |
 | `import.exclude-uuids` | `[]` | UUID-Liste, die komplett ignoriert wird |
 
 Hinweis: UUIDs werden flexibel geparst (mit oder ohne Bindestriche, case-insensitive). Ungültige Einträge werden ignoriert.
@@ -72,7 +73,7 @@ Hinweis: Die Liste wird intern auf mindestens 3 Werte normalisiert. Fehlende Wer
 |---|---:|---|
 | `import.name-resolver.enabled` | `true` | Aktiviert den Mojang-Resolver global |
 | `import.name-resolver.max-per-run` | `1500` | Standard-Limit für manuelle Resolver-Läufe (`/statsimport resolve`) |
-| `import.name-resolver.after-import-enabled` | `true` | Aktiviert Resolver-Lauf direkt nach Import |
+| `import.name-resolver.after-import-enabled` | `true` | Plant nach erfolgreicher Snapshot-Veröffentlichung einen Resolver-Lauf ein |
 | `import.name-resolver.after-import-max-per-run` | `300` | Budget direkt nach Import (klein halten, um Importthread zu entlasten) |
 | `import.name-resolver.maintenance-enabled` | `true` | Aktiviert separaten Hintergrund-Worker für Namenspflege |
 | `import.name-resolver.maintenance-interval-seconds` | `14400` | Intervall des Hintergrund-Workers |
@@ -91,6 +92,8 @@ Kandidaten-Priorität:
 
 1. `fallback`/`unknown` und fehlende Namen
 2. danach stale Einträge über `refresh-days`
+
+Resolver-Läufe werden über eine gemeinsame Queue dedupliziert. After-Import, Maintenance und manuelle Resolver-Trigger laufen dadurch nie parallel; wenn mehrere Resolver-Trigger warten, wird das größte Budget übernommen.
 
 ## Abschnitt `database`
 
@@ -120,6 +123,7 @@ Fehlen diese Werte, bricht der Pluginstart mit Konfigurationsfehler ab.
 | `bootstrap.verify-schema` | `true` | Schema auf Pflichtobjekte prüfen |
 | `bootstrap.seed-on-missing-schema` | `true` | Nach Schema-Erstellung Seed-Import starten |
 | `bootstrap.seed-if-metric-def-empty` | `true` | Seed-Import starten, wenn `metric_def` leer ist |
+| `bootstrap.sync-seeds` | `true` | Seed-Datei bei jedem Start anwenden, entfernte `metric_source`-Einträge löschen und entfernte Metriken deaktivieren |
 | `bootstrap.seed-file` | `metric-seeds.yml` | Seed-Datei (relativ zu Plugin-Datenordner oder absolut) |
 
 ## Validierung und Grenzwerte
@@ -128,6 +132,7 @@ Einige Werte werden beim Laden begrenzt:
 
 - `interval-seconds >= 1`
 - `min-play-ticks >= 0`
+- `safety.max-parse-errors >= -1`
 - `worker-threads >= 1`
 - `max-inflight-calculations >= 10`
 - `flush-* >= 1`

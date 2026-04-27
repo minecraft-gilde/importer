@@ -98,6 +98,8 @@ Zusätzlich kann direkt nach einem erfolgreichen Import ein kleiner Resolver-Lau
 - `import.name-resolver.after-import-enabled`
 - Budget: `import.name-resolver.after-import-max-per-run`
 
+Dieser Resolver-Lauf wird erst nach der Snapshot-Veröffentlichung in die gemeinsame Resolver-Queue gelegt. Maintenance- und manuelle Resolver-Läufe nutzen dieselbe Queue, werden dedupliziert und laufen nie parallel zum Import oder zueinander.
+
 ## Logging und Beobachtung
 
 Relevante Logereignisse:
@@ -105,6 +107,7 @@ Relevante Logereignisse:
 - aufgelöste Inputpfade (`stats-dir`, `usercache-path`)
 - Anzahl geladener Namen aus `usercache.json`
 - geladene Metriken aus DB
+- Parse-Fehler bei einzelnen Stats-Dateien (`parseErrors`)
 - Resolver-Läufe mit `candidates`, `resolved`, `failed`, `skipped`, `max`
 - Abschluss mit `success`, `processed`, `kept`, `changed`, `duration`
 - Fehler mit Stacktrace bei Import-, Resolver- oder Bootstrapproblemen

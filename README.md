@@ -35,6 +35,7 @@ Wichtig:
 
 - `import.interval-seconds`: Auto-Import-Intervall in Sekunden
 - `import.safety.*`: Mindestwerte gegen falsche/leere Stats-Pfade
+- `import.safety.max-parse-errors`: Grenze für kaputte Stats-JSONs vor Snapshot-Veröffentlichung
 - `import.retention.keep-runs`: Aufbewahrung alter Snapshot-Runs
 - `import.stats-dir`: `auto` nutzt den Standardpfad des Servers (`<world>/stats`)
 - `import.usercache-path`: `auto` nutzt `<server-root>/usercache.json`
@@ -43,6 +44,7 @@ Wichtig:
 - `import.max-inflight-calculations`: Begrenzung für gleichzeitig ausstehende Berechnungen
 - `database.*`: MariaDB-Zugangsdaten
 - `bootstrap.*`: Schema-Check/Create und Seed-Import beim Plugin-Start
+- `bootstrap.sync-seeds`: hält `metric_def`/`metric_source` am Seed-Sollzustand
 
 ## DB-Bootstrap beim Start
 

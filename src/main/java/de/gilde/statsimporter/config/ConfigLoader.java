@@ -22,6 +22,7 @@ public final class ConfigLoader {
                 Math.max(0, config.getInt("import.min-play-ticks", 72000)),
                 Math.max(0, config.getInt("import.safety.min-processed-files", 1)),
                 Math.max(0, config.getInt("import.safety.min-kept-players", 1)),
+                Math.max(-1, config.getInt("import.safety.max-parse-errors", 0)),
                 Math.max(1, config.getInt("import.worker-threads", 6)),
                 Math.max(10, config.getInt("import.max-inflight-calculations", 3000)),
                 Math.max(1, config.getInt("import.flush-profiles", 2000)),
@@ -67,6 +68,7 @@ public final class ConfigLoader {
                 config.getBoolean("bootstrap.verify-schema", true),
                 config.getBoolean("bootstrap.seed-on-missing-schema", true),
                 config.getBoolean("bootstrap.seed-if-metric-def-empty", true),
+                config.getBoolean("bootstrap.sync-seeds", true),
                 config.getString("bootstrap.seed-file", "metric-seeds.yml")
         );
 

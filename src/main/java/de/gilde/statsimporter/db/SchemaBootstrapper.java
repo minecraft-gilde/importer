@@ -14,10 +14,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -27,12 +30,19 @@ public final class SchemaBootstrapper {
     private final JavaPlugin plugin;
     private final javax.sql.DataSource dataSource;
     private final PluginSettings.BootstrapSettings settings;
+    private final Set<String> protectedMetricIds;
     private final Logger logger;
 
-    public SchemaBootstrapper(JavaPlugin plugin, javax.sql.DataSource dataSource, PluginSettings.BootstrapSettings settings) {
+    public SchemaBootstrapper(
+            JavaPlugin plugin,
+            javax.sql.DataSource dataSource,
+            PluginSettings.BootstrapSettings settings,
+            Set<String> protectedMetricIds
+    ) {
         this.plugin = plugin;
         this.dataSource = dataSource;
         this.settings = settings;
+        this.protectedMetricIds = protectedMetricIds == null ? Set.of() : Set.copyOf(protectedMetricIds);
         this.logger = plugin.getLogger();
     }
 
@@ -61,11 +71,15 @@ public final class SchemaBootstrapper {
             }
 
             boolean shouldSeed = (schemaMissingOrInvalid && settings.seedOnMissingSchema())
-                    || (settings.seedIfMetricDefEmpty() && countMetricDefRows(connection) == 0);
+                    || (settings.seedIfMetricDefEmpty() && countMetricDefRows(connection) == 0)
+                    || settings.syncSeeds();
             if (shouldSeed) {
                 Path seedPath = resolveSeedFile();
                 MetricSeeds seeds = readSeeds(seedPath);
                 upsertSeeds(connection, seeds);
+                if (settings.syncSeeds()) {
+                    syncSeeds(connection, seeds);
+                }
                 connection.commit();
                 logger.info("Seed import finished: metric_def=" + seeds.metricDefinitions().size()
                         + ", metric_source=" + seeds.metricSources().size());
@@ -141,6 +155,63 @@ public final class SchemaBootstrapper {
                 stmt.addBatch();
             }
             stmt.executeBatch();
+        }
+    }
+
+    private void syncSeeds(Connection connection, MetricSeeds seeds) throws SQLException {
+        Set<String> seededMetricIds = new HashSet<>();
+        for (MetricDefinitionSeed seed : seeds.metricDefinitions()) {
+            seededMetricIds.add(seed.id());
+        }
+
+        deleteRemovedMetricSources(connection, seeds.metricSources());
+        disableRemovedMetricDefinitions(connection, seededMetricIds);
+    }
+
+    private void deleteRemovedMetricSources(Connection connection, List<MetricSourceSeed> sources) throws SQLException {
+        if (sources.isEmpty()) {
+            try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM metric_source")) {
+                stmt.executeUpdate();
+            }
+            return;
+        }
+
+        String keepPredicate = String.join(
+                " OR ",
+                Collections.nCopies(sources.size(), "(metric_id=? AND section=? AND mc_key=?)")
+        );
+        String sql = "DELETE FROM metric_source WHERE NOT (" + keepPredicate + ")";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            int idx = 1;
+            for (MetricSourceSeed source : sources) {
+                stmt.setString(idx++, source.metricId());
+                stmt.setString(idx++, source.section());
+                stmt.setString(idx++, source.mcKey());
+            }
+            stmt.executeUpdate();
+        }
+    }
+
+    private void disableRemovedMetricDefinitions(Connection connection, Set<String> seededMetricIds) throws SQLException {
+        Set<String> keepIds = new HashSet<>(seededMetricIds);
+        keepIds.addAll(protectedMetricIds);
+        keepIds.removeIf(id -> id == null || id.isBlank());
+
+        if (keepIds.isEmpty()) {
+            try (PreparedStatement stmt = connection.prepareStatement("UPDATE metric_def SET enabled=0")) {
+                stmt.executeUpdate();
+            }
+            return;
+        }
+
+        String placeholders = String.join(",", Collections.nCopies(keepIds.size(), "?"));
+        String sql = "UPDATE metric_def SET enabled=0 WHERE id NOT IN (" + placeholders + ")";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            int idx = 1;
+            for (String id : keepIds) {
+                stmt.setString(idx++, id);
+            }
+            stmt.executeUpdate();
         }
     }
 
