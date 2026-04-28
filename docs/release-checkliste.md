@@ -1,6 +1,6 @@
 ﻿# Release-Checkliste
 
-Diese Checkliste dient als verbindlicher Ablauf für sichere Änderungen am Importer.
+Diese Checkliste dient als verbindlicher Ablauf für sichere Änderungen und produktive Releases des Importers.
 
 ## 1. Vor dem Merge
 
@@ -51,7 +51,50 @@ Diese Checkliste dient als verbindlicher Ablauf für sichere Änderungen am Impo
   - letzte funktionierende JAR verfügbar
   - bekannte Konfigurationsversion verfügbar
 
-## 5. Nach dem Deploy
+## 5. GitHub Release erstellen
+
+Releases werden automatisch durch `.github/workflows/release.yml` gebaut und veröffentlicht.
+
+Voraussetzungen:
+
+- alle Änderungen sind auf `main` gemerged
+- CI auf `main` ist grün
+- Versionsnummer steht fest, zum Beispiel `1.0.0`
+- Release-Notizen oder PR-Liste sind geprüft
+- Repository-Setting `Actions > General > Workflow permissions` erlaubt Schreibzugriff, damit `GITHUB_TOKEN` Releases anlegen kann
+
+Ablauf:
+
+```powershell
+git checkout main
+git pull --ff-only
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Danach startet GitHub Actions automatisch den Workflow `Release`.
+Der Workflow:
+
+- validiert den Tag (`v1.0.0` oder z. B. `v1.0.0-rc.1`)
+- baut mit `./gradlew clean build -PreleaseVersion=1.0.0 --no-daemon`
+- setzt die Version in `plugin.yml` und `paper-plugin.yml`
+- veröffentlicht `StatsImporter-1.0.0.jar` unter GitHub Releases
+- veröffentlicht zusätzlich `StatsImporter-1.0.0.jar.sha256`
+
+Prüfung nach dem Workflow:
+
+- GitHub Action `Release` ist grün
+- unter `Releases` existiert ein Release für `v1.0.0`
+- Asset `StatsImporter-1.0.0.jar` ist vorhanden
+- optional Checksumme lokal prüfen:
+
+```powershell
+Get-FileHash .\StatsImporter-1.0.0.jar -Algorithm SHA256
+```
+
+Wenn ein Workflow erneut laufen muss, darf derselbe Tag erneut verwendet werden. Der Workflow überschreibt vorhandene Release-Assets mit gleichem Namen.
+
+## 6. Nach dem Deploy
 
 - Logs auf Importstart/-ende und Fehler prüfen
 - `/statsimport status` auf `success=true` prüfen
@@ -61,7 +104,7 @@ Diese Checkliste dient als verbindlicher Ablauf für sichere Änderungen am Impo
   - Spielerprofil lädt
 - Resolver-Verhalten beobachten (bei aktivierter Namenspflege)
 
-## 6. Abschluss
+## 7. Abschluss
 
 - Release-Notiz mit:
   - Änderungen

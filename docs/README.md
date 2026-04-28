@@ -40,6 +40,12 @@ Kernmerkmale:
 5. Import testen: `/statsimport run`
 6. Status prüfen: `/statsimport status`
 
+## Releases
+
+Produktive JARs werden über GitHub Releases veröffentlicht. Ein Push eines Tags wie `v1.0.0` startet `.github/workflows/release.yml`, baut `StatsImporter-1.0.0.jar` und stellt die Datei im Release zum Download bereit.
+
+Der verbindliche Ablauf steht in [08 Release-Checkliste](./release-checkliste.md).
+
 ## Wichtige Projektpfade
 
 - `src/main/java/de/gilde/statsimporter` - Plugin-Code

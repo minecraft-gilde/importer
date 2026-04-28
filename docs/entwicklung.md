@@ -106,6 +106,8 @@ Die CI (`.github/workflows/ci.yml`) prüft aktuell:
 - Gradle Wrapper Validation
 - `./gradlew build --no-daemon`
 
+Der Release-Workflow (`.github/workflows/release.yml`) läuft nur auf Tags im Format `vMAJOR.MINOR.PATCH`, zum Beispiel `v1.0.0`. Er baut mit `-PreleaseVersion=1.0.0`, erzeugt daraus die Plugin-Version und veröffentlicht die JAR unter GitHub Releases.
+
 Erwartung vor Merge:
 
 - lokaler Build und CI-Build sind beide grün

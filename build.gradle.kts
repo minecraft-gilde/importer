@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "de.gilde"
-version = "1.0.0"
+version = providers.gradleProperty("releaseVersion").orElse("1.0.0").get()
 
 repositories {
     mavenCentral()

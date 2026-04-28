@@ -26,15 +26,26 @@ Ergebnis:
 
 - `build/libs/stats-importer-plugin-1.0.0.jar`
 
+Für eine konkrete Release-Version:
+
+```powershell
+.\gradlew.bat clean build "-PreleaseVersion=1.0.0"
+```
+
+Ergebnis:
+
+- `build/libs/stats-importer-plugin-1.0.0.jar`
+
 ## Deployment
 
-1. JAR nach `plugins/` kopieren
-2. Server starten
-3. Plugin erzeugt initial:
-4. `plugins/StatsImporter/config.yml`
-5. `plugins/StatsImporter/metric-seeds.yml`
-6. `config.yml` auf Zielumgebung anpassen
-7. Server oder Plugin neu laden
+1. JAR aus dem GitHub Release herunterladen oder lokal bauen
+2. JAR nach `plugins/` kopieren
+3. Server starten
+4. Plugin erzeugt initial:
+5. `plugins/StatsImporter/config.yml`
+6. `plugins/StatsImporter/metric-seeds.yml`
+7. `config.yml` auf Zielumgebung anpassen
+8. Server oder Plugin neu laden
 
 ## Erster Start mit DB-Bootstrap
 
