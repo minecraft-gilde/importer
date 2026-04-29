@@ -60,6 +60,8 @@ public final class ImportCoordinator implements AutoCloseable {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
     private static final String NAME_RESOLVER_USER_AGENT = "statsimporter-name-resolver/1.0";
+    private static final int NAME_RESOLVER_BATCH_FLUSH_ROWS = 25;
+    private static final Duration NAME_RESOLVER_BATCH_FLUSH_INTERVAL = Duration.ofSeconds(20);
     private static final DateTimeFormatter MINECRAFT_BAN_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss Z", Locale.ROOT);
     private static final int KNOWN_NAME_PRIORITY_UNKNOWN = 0;
@@ -866,6 +868,62 @@ public final class ImportCoordinator implements AutoCloseable {
         stmt.setInt(4, KNOWN_NAME_PRIORITY_MOJANG);
         stmt.setInt(5, seenInStats ? 1 : 0);
         stmt.addBatch();
+    }
+
+    private void flushNameResolverBatchesIfNeeded(
+            Connection connection,
+            PreparedStatement updateResolved,
+            PreparedStatement updateChecked,
+            PreparedStatement updateKnown,
+            PreparedStatement updateKnownChecked,
+            NameResolverBatchState batchState,
+            boolean force
+    ) throws SQLException {
+        boolean intervalElapsed = Duration.between(
+                batchState.lastFlushAt(),
+                Instant.now()
+        ).compareTo(NAME_RESOLVER_BATCH_FLUSH_INTERVAL) >= 0;
+        if (!force
+                && batchState.pendingRows() < NAME_RESOLVER_BATCH_FLUSH_ROWS
+                && !intervalElapsed) {
+            return;
+        }
+
+        if (!batchState.hasPendingRows()) {
+            if (intervalElapsed) {
+                keepNameResolverConnectionAlive(connection);
+                batchState.markFlushed();
+            }
+            return;
+        }
+
+        if (batchState.pendingUpdatedProfileRows > 0) {
+            updateResolved.executeBatch();
+            updateResolved.clearBatch();
+        }
+        if (batchState.pendingUpdatedKnownRows > 0 && updateKnown != null) {
+            updateKnown.executeBatch();
+            updateKnown.clearBatch();
+        }
+        if (batchState.pendingCheckedProfileRows > 0 && updateChecked != null) {
+            updateChecked.executeBatch();
+            updateChecked.clearBatch();
+        }
+        if (batchState.pendingCheckedKnownRows > 0 && updateKnownChecked != null) {
+            updateKnownChecked.executeBatch();
+            updateKnownChecked.clearBatch();
+        }
+        connection.commit();
+        batchState.markFlushed();
+    }
+
+    private void keepNameResolverConnectionAlive(Connection connection) throws SQLException {
+        try (PreparedStatement stmt = connection.prepareStatement("SELECT 1")) {
+            try (ResultSet ignored = stmt.executeQuery()) {
+                // Keep the DB connection from going idle while Mojang requests are slow.
+            }
+        }
+        connection.commit();
     }
 
     private BanSyncResult syncBans(Connection connection, long runId, BanFileLoadResult banFile) throws SQLException {
@@ -1714,10 +1772,7 @@ public final class ImportCoordinator implements AutoCloseable {
         int skipped = 0;
         int processed = 0;
         int sleepMs = settings.nameResolverSleepMs();
-        int updatedProfileRows = 0;
-        int updatedKnownRows = 0;
-        int checkedProfileRows = 0;
-        int checkedKnownRows = 0;
+        NameResolverBatchState batchState = new NameResolverBatchState();
 
         final String updateKnownSql;
         if (hasPlayerKnown && hasKnownNameCheckedAt) {
@@ -1800,10 +1855,10 @@ public final class ImportCoordinator implements AutoCloseable {
                     updateResolved.setLong(3, runId);
                     updateResolved.setBytes(4, UuidCodec.toBytes(candidate.uuid()));
                     updateResolved.addBatch();
-                    updatedProfileRows++;
+                    batchState.markUpdatedProfileRow();
                     if (updateKnown != null) {
                         addKnownNameUpdateBatch(updateKnown, candidate.uuid(), resolvedName, true);
-                        updatedKnownRows++;
+                        batchState.markUpdatedKnownRow();
                     }
                     resolved++;
                 } else {
@@ -1812,15 +1867,25 @@ public final class ImportCoordinator implements AutoCloseable {
                         updateChecked.setLong(1, runId);
                         updateChecked.setBytes(2, UuidCodec.toBytes(candidate.uuid()));
                         updateChecked.addBatch();
-                        checkedProfileRows++;
+                        batchState.markCheckedProfileRow();
                     }
                     if (updateKnownChecked != null) {
                         updateKnownChecked.setBytes(1, UuidCodec.toBytes(candidate.uuid()));
                         updateKnownChecked.addBatch();
-                        checkedKnownRows++;
+                        batchState.markCheckedKnownRow();
                     }
                 }
                 processed++;
+
+                flushNameResolverBatchesIfNeeded(
+                        connection,
+                        updateResolved,
+                        updateChecked,
+                        updateKnown,
+                        updateKnownChecked,
+                        batchState,
+                        false
+                );
 
                 if (sleepMs > 0 && processed < totalCandidates) {
                     try {
@@ -1847,7 +1912,7 @@ public final class ImportCoordinator implements AutoCloseable {
                     if (resolvedName != null) {
                         if (updateKnown != null) {
                             addKnownNameUpdateBatch(updateKnown, candidate.uuid(), resolvedName, false);
-                            updatedKnownRows++;
+                            batchState.markUpdatedKnownRow();
                         }
                         resolved++;
                     } else {
@@ -1855,10 +1920,20 @@ public final class ImportCoordinator implements AutoCloseable {
                         if (updateKnownChecked != null) {
                             updateKnownChecked.setBytes(1, UuidCodec.toBytes(candidate.uuid()));
                             updateKnownChecked.addBatch();
-                            checkedKnownRows++;
+                            batchState.markCheckedKnownRow();
                         }
                     }
                     processed++;
+
+                    flushNameResolverBatchesIfNeeded(
+                            connection,
+                            updateResolved,
+                            updateChecked,
+                            updateKnown,
+                            updateKnownChecked,
+                            batchState,
+                            false
+                    );
 
                     if (sleepMs > 0 && processed < totalCandidates) {
                         try {
@@ -1873,22 +1948,19 @@ public final class ImportCoordinator implements AutoCloseable {
                 }
             }
 
-            if (updatedProfileRows > 0) {
-                updateResolved.executeBatch();
-            }
-            if (updatedKnownRows > 0 && updateKnown != null) {
-                updateKnown.executeBatch();
-            }
-            if (checkedProfileRows > 0 && updateChecked != null) {
-                updateChecked.executeBatch();
-            }
-            if (checkedKnownRows > 0 && updateKnownChecked != null) {
-                updateKnownChecked.executeBatch();
-            }
+            flushNameResolverBatchesIfNeeded(
+                    connection,
+                    updateResolved,
+                    updateChecked,
+                    updateKnown,
+                    updateKnownChecked,
+                    batchState,
+                    true
+            );
         }
 
         int backfilled = hasPlayerKnown ? ensureKnownNamesPresent(connection) : 0;
-        if (updatedProfileRows > 0 || updatedKnownRows > 0 || checkedProfileRows > 0 || checkedKnownRows > 0 || backfilled > 0) {
+        if (backfilled > 0) {
             connection.commit();
         }
 
@@ -2430,6 +2502,53 @@ public final class ImportCoordinator implements AutoCloseable {
             long value,
             int points
     ) {
+    }
+
+    private static final class NameResolverBatchState {
+        private int pendingUpdatedProfileRows;
+        private int pendingUpdatedKnownRows;
+        private int pendingCheckedProfileRows;
+        private int pendingCheckedKnownRows;
+        private Instant lastFlushAt = Instant.now();
+
+        private void markUpdatedProfileRow() {
+            pendingUpdatedProfileRows++;
+        }
+
+        private void markUpdatedKnownRow() {
+            pendingUpdatedKnownRows++;
+        }
+
+        private void markCheckedProfileRow() {
+            pendingCheckedProfileRows++;
+        }
+
+        private void markCheckedKnownRow() {
+            pendingCheckedKnownRows++;
+        }
+
+        private int pendingRows() {
+            return pendingUpdatedProfileRows
+                    + pendingUpdatedKnownRows
+                    + pendingCheckedProfileRows
+                    + pendingCheckedKnownRows;
+        }
+
+        private boolean hasPendingRows() {
+            return pendingRows() > 0;
+        }
+
+        private Instant lastFlushAt() {
+            return lastFlushAt;
+        }
+
+        private void markFlushed() {
+            pendingUpdatedProfileRows = 0;
+            pendingUpdatedKnownRows = 0;
+            pendingCheckedProfileRows = 0;
+            pendingCheckedKnownRows = 0;
+            lastFlushAt = Instant.now();
+        }
     }
 
     private record NameCandidate(UUID uuid) {
