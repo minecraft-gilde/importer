@@ -14,7 +14,7 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
 
-    implementation("com.zaxxer:HikariCP:6.3.3")
+    implementation("com.zaxxer:HikariCP:7.0.2")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.8")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.21.3")
 
