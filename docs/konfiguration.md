@@ -106,6 +106,7 @@ Resolver-Läufe werden über eine gemeinsame Queue dedupliziert. After-Import, M
 | `database.password` | `change-me` | DB-Passwort |
 | `database.pool-max-size` | `10` | Hikari Pool-Größe |
 | `database.connection-timeout-ms` | `10000` | Timeout für DB-Verbindungen |
+| `database.max-lifetime-ms` | `600000` | Maximale Lebensdauer einer Hikari-Verbindung |
 
 Pflichtfelder:
 
@@ -148,6 +149,7 @@ Einige Werte werden beim Laden begrenzt:
 - `database.port >= 1`
 - `pool-max-size >= 1`
 - `connection-timeout-ms >= 1000`
+- `max-lifetime-ms >= 30000`
 
 ## Beispielprofile
 

@@ -14,6 +14,17 @@ class ConfigLoaderTest {
 
         assertEquals(0, settings.importSettings().safetyMaxParseErrors());
         assertTrue(settings.bootstrapSettings().syncSeeds());
+        assertEquals(600000L, settings.databaseSettings().maxLifetimeMs());
+    }
+
+    @Test
+    void clampsDatabaseMaxLifetimeToHikariMinimum() {
+        YamlConfiguration config = minimalConfig();
+        config.set("database.max-lifetime-ms", 1000L);
+
+        PluginSettings settings = ConfigLoader.load(config);
+
+        assertEquals(30000L, settings.databaseSettings().maxLifetimeMs());
     }
 
     @Test

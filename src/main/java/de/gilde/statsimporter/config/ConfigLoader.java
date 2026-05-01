@@ -60,7 +60,8 @@ public final class ConfigLoader {
                 dbUser,
                 dbPassword == null ? "" : dbPassword,
                 Math.max(1, config.getInt("database.pool-max-size", 10)),
-                Math.max(1000L, config.getLong("database.connection-timeout-ms", 10000L))
+                Math.max(1000L, config.getLong("database.connection-timeout-ms", 10000L)),
+                Math.max(30000L, config.getLong("database.max-lifetime-ms", 600000L))
         );
 
         PluginSettings.BootstrapSettings bootstrapSettings = new PluginSettings.BootstrapSettings(

@@ -52,7 +52,8 @@ public record PluginSettings(
             String user,
             String password,
             int poolMaxSize,
-            long connectionTimeoutMs
+            long connectionTimeoutMs,
+            long maxLifetimeMs
     ) {
     }
 

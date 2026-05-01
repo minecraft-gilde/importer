@@ -22,6 +22,7 @@ public final class DatabaseManager implements AutoCloseable {
         config.setPassword(settings.password());
         config.setMaximumPoolSize(settings.poolMaxSize());
         config.setConnectionTimeout(settings.connectionTimeoutMs());
+        config.setMaxLifetime(settings.maxLifetimeMs());
         config.setAutoCommit(false);
         config.addDataSourceProperty("useUnicode", "true");
         config.addDataSourceProperty("characterEncoding", "utf8");
