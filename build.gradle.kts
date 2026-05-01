@@ -18,7 +18,7 @@ dependencies {
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.8")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.21.3")
 
-    testImplementation("org.junit.jupiter:junit-jupiter:5.14.4")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
     testImplementation("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
