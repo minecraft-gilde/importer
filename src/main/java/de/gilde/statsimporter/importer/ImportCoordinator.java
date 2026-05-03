@@ -919,9 +919,7 @@ public final class ImportCoordinator implements AutoCloseable {
 
     private void keepNameResolverConnectionAlive(Connection connection) throws SQLException {
         try (PreparedStatement stmt = connection.prepareStatement("SELECT 1")) {
-            try (ResultSet ignored = stmt.executeQuery()) {
-                // Keep the DB connection from going idle while Mojang requests are slow.
-            }
+            stmt.execute();
         }
         connection.commit();
     }

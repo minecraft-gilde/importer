@@ -1,5 +1,13 @@
 ﻿# Stats Importer Plugin (Paper/Folia)
 
+[![CI](https://img.shields.io/github/actions/workflow/status/minecraft-gilde/importer/ci.yml?branch=main&label=build)](https://github.com/minecraft-gilde/importer/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/minecraft-gilde/importer?label=release&cacheSeconds=300)](https://github.com/minecraft-gilde/importer/releases)
+[![License](https://img.shields.io/github/license/minecraft-gilde/importer)](LICENSE)
+![Java](https://img.shields.io/badge/Java-21-orange)
+![Paper](https://img.shields.io/badge/Paper-1.21.x-blue)
+![Folia](https://img.shields.io/badge/Folia-supported-brightgreen)
+[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.minecraft-gilde.de)
+
 Dieses Repository enthält ein Java-Plugin für den Import von Minecraft-Stats auf Paper/Folia.
 
 ## Dokumentation
