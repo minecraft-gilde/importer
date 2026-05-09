@@ -13,6 +13,8 @@ class ConfigLoaderTest {
         PluginSettings settings = ConfigLoader.load(minimalConfig());
 
         assertEquals(0, settings.importSettings().safetyMaxParseErrors());
+        assertTrue(settings.importSettings().worldAgeEnabled());
+        assertEquals("auto", settings.importSettings().worldAgeWorld());
         assertTrue(settings.bootstrapSettings().syncSeeds());
         assertEquals(600000L, settings.databaseSettings().maxLifetimeMs());
     }

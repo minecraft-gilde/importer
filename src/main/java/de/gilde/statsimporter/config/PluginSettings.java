@@ -15,6 +15,8 @@ public record PluginSettings(
             String statsDirectory,
             String usercachePath,
             String bannedPlayersPath,
+            boolean worldAgeEnabled,
+            String worldAgeWorld,
             int minPlayTicks,
             int safetyMinProcessedFiles,
             int safetyMinKeptPlayers,

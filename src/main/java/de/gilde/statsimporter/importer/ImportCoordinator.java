@@ -53,6 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class ImportCoordinator implements AutoCloseable {
@@ -185,14 +186,17 @@ public final class ImportCoordinator implements AutoCloseable {
         String resolverNote = "";
         String banNote = "";
         String knownNote = "";
+        String worldAgeNote = "";
         String retentionNote = "";
         Long candidateRunId = null;
 
         Path statsDir = resolveStatsDir();
         Path usercachePath = resolveUsercachePath();
         Path bannedPlayersPath = resolveBannedPlayersPath();
+        WorldAgeSnapshot worldAgeSnapshot = null;
 
         try {
+            worldAgeSnapshot = resolveWorldAgeSnapshot();
             if (!Files.isDirectory(statsDir)) {
                 throw new IllegalStateException("stats-dir not found: " + statsDir);
             }
@@ -207,6 +211,11 @@ public final class ImportCoordinator implements AutoCloseable {
                 logger.info("Loaded " + banFile.entries().size() + " ban entries from banned-players.json.");
             } else {
                 logger.info("Ban import skipped: " + banFile.note());
+            }
+            if (worldAgeSnapshot != null) {
+                logger.info("Loaded world age: world=" + worldAgeSnapshot.worldName()
+                        + ", ticks=" + worldAgeSnapshot.worldAgeTicks()
+                        + ", days=" + worldAgeSnapshot.worldAgeDays());
             }
 
             try (Connection connection = dataSource.getConnection()) {
@@ -405,6 +414,11 @@ public final class ImportCoordinator implements AutoCloseable {
                         BanSyncResult banSyncResult = syncBans(connection, runId, banFile);
                         banNote = " | bans " + banSyncResult.note();
 
+                        if (worldAgeSnapshot != null) {
+                            upsertWorldState(connection, runId, worldAgeSnapshot);
+                            worldAgeNote = " | world-age " + worldAgeSnapshot.worldAgeDays() + "d";
+                        }
+
                         if (settings.kingEnabled()) {
                             recomputeKingPoints(connection, runId, new ArrayList<>(metricSources.keySet()));
                         }
@@ -436,6 +450,9 @@ public final class ImportCoordinator implements AutoCloseable {
                                 + ", stats-included=" + statsIncludedUuids.size()
                                 + ", usercache=" + usercacheNames.size()
                                 + ", bans=" + banFile.entries().size();
+                        if (worldAgeSnapshot != null) {
+                            worldAgeNote = " | world-age dry-run: " + worldAgeSnapshot.worldAgeDays() + "d";
+                        }
                     }
 
                     if (!knownNote.isBlank()) {
@@ -443,6 +460,9 @@ public final class ImportCoordinator implements AutoCloseable {
                     }
                     if (!banNote.isBlank()) {
                         message = message + banNote;
+                    }
+                    if (!worldAgeNote.isBlank()) {
+                        message = message + worldAgeNote;
                     }
                     if (!resolverNote.isBlank()) {
                         message = message + resolverNote;
@@ -969,6 +989,23 @@ public final class ImportCoordinator implements AutoCloseable {
         int backfilled = ensureBanNamesPresent(connection);
         connection.commit();
         return new BanSyncResult("synced=" + banFile.entries().size() + ", backfilled=" + backfilled);
+    }
+
+    private void upsertWorldState(Connection connection, long runId, WorldAgeSnapshot snapshot) throws SQLException {
+        String sql = """
+                INSERT INTO world_state (run_id, world_name, world_age_ticks, imported_at)
+                VALUES (?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                  world_name = VALUES(world_name),
+                  world_age_ticks = VALUES(world_age_ticks),
+                  imported_at = VALUES(imported_at)
+                """;
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, runId);
+            stmt.setString(2, snapshot.worldName());
+            stmt.setLong(3, snapshot.worldAgeTicks());
+            stmt.executeUpdate();
+        }
     }
 
     private int ensureBanNamesPresent(Connection connection) throws SQLException {
@@ -2332,6 +2369,40 @@ public final class ImportCoordinator implements AutoCloseable {
         return plugin.getServer().getWorldContainer().toPath().resolve("banned-players.json");
     }
 
+    private WorldAgeSnapshot resolveWorldAgeSnapshot() {
+        if (!settings.worldAgeEnabled()) {
+            return null;
+        }
+
+        World world = resolveWorldAgeWorld();
+        long ticks = world.getFullTime();
+        return new WorldAgeSnapshot(world.getName(), ticks, Math.floorDiv(ticks, 24000L));
+    }
+
+    private World resolveWorldAgeWorld() {
+        List<World> worlds = plugin.getServer().getWorlds();
+        String configured = settings.worldAgeWorld();
+        if (!isAuto(configured)) {
+            String configuredName = configured.trim();
+            for (World world : worlds) {
+                if (world.getName().equalsIgnoreCase(configuredName)) {
+                    return world;
+                }
+            }
+            throw new IllegalStateException("Configured world-age world not loaded: " + configuredName);
+        }
+
+        for (World world : worlds) {
+            if (world.getEnvironment() == World.Environment.NORMAL) {
+                return world;
+            }
+        }
+        if (!worlds.isEmpty()) {
+            return worlds.get(0);
+        }
+        throw new IllegalStateException("No loaded world available for world-age import");
+    }
+
     private boolean isAuto(String value) {
         if (value == null) {
             return true;
@@ -2359,6 +2430,13 @@ public final class ImportCoordinator implements AutoCloseable {
             UUID uuid,
             byte[] statsGzip,
             byte[] statsSha1
+    ) {
+    }
+
+    private record WorldAgeSnapshot(
+            String worldName,
+            long worldAgeTicks,
+            long worldAgeDays
     ) {
     }
 

@@ -19,6 +19,8 @@ public final class ConfigLoader {
                 config.getString("import.stats-dir", "auto"),
                 config.getString("import.usercache-path", "auto"),
                 config.getString("import.banned-players-path", "auto"),
+                config.getBoolean("import.world-age.enabled", true),
+                config.getString("import.world-age.world", "auto"),
                 Math.max(0, config.getInt("import.min-play-ticks", 72000)),
                 Math.max(0, config.getInt("import.safety.min-processed-files", 1)),
                 Math.max(0, config.getInt("import.safety.min-kept-players", 1)),

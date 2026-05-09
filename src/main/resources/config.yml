@@ -9,6 +9,12 @@
   usercache-path: "auto"
   # Pfad zu banned-players.json (auto = aus Server-Verzeichnis).
   banned-players-path: "auto"
+  # Importiert das globale Weltalter aus der Paper/Bukkit-Weltzeit.
+  world-age:
+    # Aktiviert den Weltalter-Snapshot pro Importlauf.
+    enabled: true
+    # Weltname oder auto (auto = erste Overworld/Normal-Welt, sonst erste geladene Welt).
+    world: "auto"
   # Mindest-Spielzeit in Ticks (20 Ticks = 1 Sekunde).
   min-play-ticks: 72000
   # Sicherheitsgrenzen gegen falsche/leere Stats-Pfade (0 = deaktiviert).

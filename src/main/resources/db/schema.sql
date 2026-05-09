@@ -82,6 +82,15 @@ CREATE TABLE IF NOT EXISTS player_stats (
   CONSTRAINT fk_ps_run FOREIGN KEY (run_id) REFERENCES import_run (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE IF NOT EXISTS world_state (
+  run_id BIGINT UNSIGNED NOT NULL,
+  world_name VARCHAR(128) NOT NULL,
+  world_age_ticks BIGINT NOT NULL,
+  imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (run_id),
+  CONSTRAINT fk_ws_run FOREIGN KEY (run_id) REFERENCES import_run (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS metric_def (
   id VARCHAR(64) NOT NULL,
   label VARCHAR(128) NOT NULL,
@@ -139,6 +148,12 @@ CREATE OR REPLACE ALGORITHM=UNDEFINED SQL SECURITY INVOKER VIEW v_player_stats A
 SELECT ps.*
 FROM player_stats ps
 JOIN site_state s ON s.id = 1 AND ps.run_id = s.active_run_id;
+
+CREATE OR REPLACE ALGORITHM=UNDEFINED SQL SECURITY INVOKER VIEW v_world_state AS
+SELECT ws.*,
+       FLOOR(ws.world_age_ticks / 24000) AS world_age_days
+FROM world_state ws
+JOIN site_state s ON s.id = 1 AND ws.run_id = s.active_run_id;
 
 CREATE OR REPLACE ALGORITHM=UNDEFINED SQL SECURITY INVOKER VIEW v_metric_value AS
 SELECT mv.*

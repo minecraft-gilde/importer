@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "de.gilde"
-version = providers.gradleProperty("releaseVersion").orElse("1.0.2").get()
+version = providers.gradleProperty("releaseVersion").orElse("1.0.3").get()
 
 repositories {
     mavenCentral()
@@ -21,12 +21,6 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
     testImplementation("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
-    }
 }
 
 tasks.processResources {
