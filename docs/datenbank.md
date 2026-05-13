@@ -7,6 +7,24 @@
 
 Beim Bootstrap validiert das Plugin Pflichtobjekte und kann Schema/Seeds automatisch anwenden.
 
+## Zeitvertrag
+
+Alle vom Importer geschriebenen `DATETIME`-Werte sind UTC-Werte. Der Importer initialisiert jede MariaDB-Verbindung mit `time_zone = '+00:00'`, verwendet fuer neue SQL-Zeitpunkte `UTC_TIMESTAMP()` und schreibt Java-`Timestamp`s mit UTC-Kalender.
+
+Der Vertrag gilt fuer Werte, die der Importer ab dieser Version neu erzeugt oder aktualisiert. Bereits vorhandene `DATETIME`-Werte werden nicht automatisch konvertiert; falls alte Werte im Frontend relevant sind, braucht es eine einmalige Migration mit der bekannten bisherigen Server-/DB-Zeitzone.
+
+Das gilt insbesondere fuer:
+
+- `import_run.generated_at`
+- `site_state.updated_at`
+- `player_profile.last_seen` und `name_checked_at`
+- `player_known.first_seen`, `last_seen` und `name_checked_at`
+- `player_ban.banned_at` und `expires_at`
+- `player_stats.updated_at`
+- `world_state.imported_at`
+
+Ban-Zeitpunkte aus `banned-players.json` werden mit dem dort enthaltenen Offset geparst und als UTC-normalisierte Zeit gespeichert. APIs sollten diese DB-Werte als UTC interpretieren und nach aussen als ISO-8601 mit `Z` ausgeben, zum Beispiel `2026-05-13T12:00:00Z`.
+
 ## Datenmodell auf hoher Ebene
 
 ## Laufverwaltung

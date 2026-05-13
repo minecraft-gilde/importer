@@ -24,6 +24,7 @@ public final class DatabaseManager implements AutoCloseable {
         config.setConnectionTimeout(settings.connectionTimeoutMs());
         config.setMaxLifetime(settings.maxLifetimeMs());
         config.setAutoCommit(false);
+        config.setConnectionInitSql("SET time_zone = '+00:00'");
         config.addDataSourceProperty("useUnicode", "true");
         config.addDataSourceProperty("characterEncoding", "utf8");
         config.addDataSourceProperty("tcpKeepAlive", "true");

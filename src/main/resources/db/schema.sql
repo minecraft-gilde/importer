@@ -1,3 +1,5 @@
+-- Importer contract: all DATETIME values written by the plugin are UTC.
+-- The Hikari pool initializes MariaDB sessions with time_zone = '+00:00'.
 CREATE TABLE IF NOT EXISTS import_run (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   generated_at DATETIME NOT NULL,

@@ -26,14 +26,15 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.LocalDateTime;
+import java.sql.Types;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,6 +42,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorCompletionService;
@@ -65,6 +67,7 @@ public final class ImportCoordinator implements AutoCloseable {
     private static final Duration NAME_RESOLVER_BATCH_FLUSH_INTERVAL = Duration.ofSeconds(20);
     private static final DateTimeFormatter MINECRAFT_BAN_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss Z", Locale.ROOT);
+    private static final TimeZone UTC_TIME_ZONE = TimeZone.getTimeZone("UTC");
     private static final int KNOWN_NAME_PRIORITY_UNKNOWN = 0;
     private static final int KNOWN_NAME_PRIORITY_FALLBACK = 1;
     private static final int KNOWN_NAME_PRIORITY_BANLIST = 2;
@@ -759,7 +762,7 @@ public final class ImportCoordinator implements AutoCloseable {
                     INSERT INTO player_known (
                       uuid, name, name_lc, name_source, name_priority, first_seen, last_seen, seen_in_stats, seen_in_usercache, seen_in_bans
                     )
-                    VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP(), ?, ?, ?)
                     ON DUPLICATE KEY UPDATE
                       last_seen = VALUES(last_seen),
                       seen_in_stats = IF(seen_in_stats = 1 OR VALUES(seen_in_stats) = 1, 1, 0),
@@ -976,8 +979,8 @@ public final class ImportCoordinator implements AutoCloseable {
                     insert.setString(4, ban.nameLc());
                     insert.setString(5, ban.reason());
                     insert.setString(6, ban.bannedBy());
-                    insert.setTimestamp(7, ban.bannedAt());
-                    insert.setTimestamp(8, ban.expiresAt());
+                    setUtcTimestamp(insert, 7, ban.bannedAt());
+                    setUtcTimestamp(insert, 8, ban.expiresAt());
                     insert.setInt(9, ban.permanent() ? 1 : 0);
                     insert.setString(10, ban.sourceRaw());
                     insert.setString(11, ban.expiresRaw());
@@ -994,7 +997,7 @@ public final class ImportCoordinator implements AutoCloseable {
     private void upsertWorldState(Connection connection, long runId, WorldAgeSnapshot snapshot) throws SQLException {
         String sql = """
                 INSERT INTO world_state (run_id, world_name, world_age_ticks, imported_at)
-                VALUES (?, ?, ?, NOW())
+                VALUES (?, ?, ?, UTC_TIMESTAMP())
                 ON DUPLICATE KEY UPDATE
                   world_name = VALUES(world_name),
                   world_age_ticks = VALUES(world_age_ticks),
@@ -1073,6 +1076,23 @@ public final class ImportCoordinator implements AutoCloseable {
         }
     }
 
+    private static Timestamp utcTimestampNow() {
+        return Timestamp.from(Instant.now());
+    }
+
+    private static Timestamp getUtcTimestamp(ResultSet resultSet, int columnIndex) throws SQLException {
+        return resultSet.getTimestamp(columnIndex, Calendar.getInstance(UTC_TIME_ZONE));
+    }
+
+    private static void setUtcTimestamp(PreparedStatement statement, int parameterIndex, Timestamp value)
+            throws SQLException {
+        if (value == null) {
+            statement.setNull(parameterIndex, Types.TIMESTAMP);
+            return;
+        }
+        statement.setTimestamp(parameterIndex, value, Calendar.getInstance(UTC_TIME_ZONE));
+    }
+
     private Long findActiveRunId(Connection connection) throws SQLException {
         try (PreparedStatement stmt = connection.prepareStatement("SELECT active_run_id FROM site_state WHERE id=1");
              ResultSet rs = stmt.executeQuery()) {
@@ -1089,7 +1109,7 @@ public final class ImportCoordinator implements AutoCloseable {
     private long createLoadingRun(Connection connection) throws SQLException {
         long newRunId;
         try (PreparedStatement insert = connection.prepareStatement(
-                "INSERT INTO import_run (generated_at, status) VALUES (NOW(), 'loading')",
+                "INSERT INTO import_run (generated_at, status) VALUES (UTC_TIMESTAMP(), 'loading')",
                 PreparedStatement.RETURN_GENERATED_KEYS
         )) {
             insert.executeUpdate();
@@ -1106,7 +1126,7 @@ public final class ImportCoordinator implements AutoCloseable {
 
     private void publishRun(Connection connection, long runId) throws SQLException {
         try (PreparedStatement touch = connection.prepareStatement(
-                "UPDATE import_run SET generated_at=NOW(), status='active' WHERE id=?"
+                "UPDATE import_run SET generated_at=UTC_TIMESTAMP(), status='active' WHERE id=?"
         );
              PreparedStatement update = connection.prepareStatement(
                      "UPDATE site_state SET active_run_id=? WHERE id=1"
@@ -1284,7 +1304,7 @@ public final class ImportCoordinator implements AutoCloseable {
                         continue;
                     }
                     String source = hasNameSource ? rs.getString(3) : null;
-                    Timestamp checkedAt = hasNameCheckedAt ? rs.getTimestamp(columns.size()) : null;
+                    Timestamp checkedAt = hasNameCheckedAt ? getUtcTimestamp(rs, columns.size()) : null;
                     map.put(
                             UuidCodec.fromBytes(uuidBytes),
                             new PlayerProfileMeta(name, source, checkedAt)
@@ -1402,13 +1422,13 @@ public final class ImportCoordinator implements AutoCloseable {
                 stmt.setString(idx++, row.nameLc());
                 if (hasNameSource && hasNameCheckedAt) {
                     stmt.setString(idx++, row.nameSource());
-                    stmt.setTimestamp(idx++, row.nameCheckedAt());
-                    stmt.setTimestamp(idx, row.lastSeen());
+                    setUtcTimestamp(stmt, idx++, row.nameCheckedAt());
+                    setUtcTimestamp(stmt, idx, row.lastSeen());
                 } else if (hasNameSource) {
                     stmt.setString(idx++, row.nameSource());
-                    stmt.setTimestamp(idx, row.lastSeen());
+                    setUtcTimestamp(stmt, idx, row.lastSeen());
                 } else {
-                    stmt.setTimestamp(idx, row.lastSeen());
+                    setUtcTimestamp(stmt, idx, row.lastSeen());
                 }
                 stmt.addBatch();
             }
@@ -1573,7 +1593,7 @@ public final class ImportCoordinator implements AutoCloseable {
         if (!statsRows.isEmpty()) {
             String sql = """
                     INSERT INTO player_stats (run_id, uuid, stats_gzip, stats_sha1, updated_at)
-                    VALUES (?, ?, ?, ?, NOW())
+                    VALUES (?, ?, ?, ?, UTC_TIMESTAMP())
                     ON DUPLICATE KEY UPDATE
                       stats_gzip = VALUES(stats_gzip),
                       stats_sha1 = VALUES(stats_sha1),
@@ -1785,7 +1805,7 @@ public final class ImportCoordinator implements AutoCloseable {
         if (hasNameSource && hasNameCheckedAt) {
             updateSuccessSql = """
                     UPDATE player_profile
-                    SET name=?, name_lc=?, name_source='mojang', name_checked_at=NOW()
+                    SET name=?, name_lc=?, name_source='mojang', name_checked_at=UTC_TIMESTAMP()
                     WHERE run_id=? AND uuid=?
                     """;
         } else if (hasNameSource) {
@@ -1815,10 +1835,10 @@ public final class ImportCoordinator implements AutoCloseable {
                     INSERT INTO player_known (
                       uuid, name, name_lc, name_source, name_priority, first_seen, last_seen, name_checked_at, seen_in_stats, seen_in_usercache, seen_in_bans
                     )
-                    VALUES (?, ?, ?, 'mojang', ?, NOW(), NOW(), NOW(), ?, 0, 0)
+                    VALUES (?, ?, ?, 'mojang', ?, UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP(), ?, 0, 0)
                     ON DUPLICATE KEY UPDATE
-                      last_seen = NOW(),
-                      name_checked_at = NOW(),
+                      last_seen = UTC_TIMESTAMP(),
+                      name_checked_at = UTC_TIMESTAMP(),
                       seen_in_stats = IF(seen_in_stats = 1 OR VALUES(seen_in_stats) = 1, 1, 0),
                       name = CASE
                         WHEN VALUES(name_priority) >= name_priority THEN VALUES(name)
@@ -1839,9 +1859,9 @@ public final class ImportCoordinator implements AutoCloseable {
                     INSERT INTO player_known (
                       uuid, name, name_lc, name_source, name_priority, first_seen, last_seen, seen_in_stats, seen_in_usercache, seen_in_bans
                     )
-                    VALUES (?, ?, ?, 'mojang', ?, NOW(), NOW(), ?, 0, 0)
+                    VALUES (?, ?, ?, 'mojang', ?, UTC_TIMESTAMP(), UTC_TIMESTAMP(), ?, 0, 0)
                     ON DUPLICATE KEY UPDATE
-                      last_seen = NOW(),
+                      last_seen = UTC_TIMESTAMP(),
                       seen_in_stats = IF(seen_in_stats = 1 OR VALUES(seen_in_stats) = 1, 1, 0),
                       name = CASE
                         WHEN VALUES(name_priority) >= name_priority THEN VALUES(name)
@@ -1864,14 +1884,14 @@ public final class ImportCoordinator implements AutoCloseable {
         try (PreparedStatement updateResolved = connection.prepareStatement(updateSuccessSql);
              PreparedStatement updateChecked = hasNameCheckedAt
                      ? connection.prepareStatement(
-                     "UPDATE player_profile SET name_checked_at=NOW() WHERE run_id=? AND uuid=?"
+                     "UPDATE player_profile SET name_checked_at=UTC_TIMESTAMP() WHERE run_id=? AND uuid=?"
              )
                      : null;
              PreparedStatement updateKnown = updateKnownSql != null
                      ? connection.prepareStatement(updateKnownSql)
                      : null;
              PreparedStatement updateKnownChecked = hasKnownNameCheckedAt
-                     ? connection.prepareStatement("UPDATE player_known SET name_checked_at=NOW() WHERE uuid=?")
+                     ? connection.prepareStatement("UPDATE player_known SET name_checked_at=UTC_TIMESTAMP() WHERE uuid=?")
                      : null) {
             boolean stopRequested = false;
 
@@ -2046,7 +2066,7 @@ public final class ImportCoordinator implements AutoCloseable {
             int idx = 1;
             stmt.setLong(idx++, runId);
             if (applyRefreshWindow) {
-                stmt.setTimestamp(idx++, refreshCutoff);
+                setUtcTimestamp(stmt, idx++, refreshCutoff);
             }
             stmt.setInt(idx, Math.max(1, maxCandidates));
             try (ResultSet rs = stmt.executeQuery()) {
@@ -2095,7 +2115,7 @@ public final class ImportCoordinator implements AutoCloseable {
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             int idx = 1;
             if (applyRefreshWindow) {
-                stmt.setTimestamp(idx++, refreshCutoff);
+                setUtcTimestamp(stmt, idx++, refreshCutoff);
             }
             stmt.setInt(idx, Math.max(1, fetchLimit));
             try (ResultSet rs = stmt.executeQuery()) {
@@ -2236,7 +2256,7 @@ public final class ImportCoordinator implements AutoCloseable {
         }
 
         String normalizedSource = hasNameSource ? source : null;
-        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+        Timestamp now = utcTimestampNow();
         return new ProfileRow(runId, uuid, name, name.toLowerCase(Locale.ROOT), normalizedSource, checkedAt, now);
     }
 

@@ -130,7 +130,7 @@ Priorität bei Spielernamen:
 2. bestehender DB-Wert (`player_profile`)
 3. stabiler Fallback auf UUID-Substring
 
-`name_checked_at` wird nicht mehr bei jedem usercache-Treffer auf `NOW()` gesetzt, sondern bleibt erhalten.
+`name_checked_at` wird nicht mehr bei jedem usercache-Treffer auf `UTC_TIMESTAMP()` gesetzt, sondern bleibt erhalten.
 
 Optionaler Mojang-Resolver:
 
@@ -138,8 +138,8 @@ Optionaler Mojang-Resolver:
 1. `fallback`/`unknown` und fehlende Namen
 2. danach stale Einträge via `refresh-days`
 - Endpoint-Reihenfolge: Sessionserver, dann Mojang Name-History
-- Bei Erfolg: `name`, `name_lc`, `name_source='mojang'`, `name_checked_at=NOW()`
-- Bei Fehlschlag: `name_checked_at=NOW()` (falls Spalte vorhanden), um sofortige Retries zu vermeiden
+- Bei Erfolg: `name`, `name_lc`, `name_source='mojang'`, `name_checked_at=UTC_TIMESTAMP()`
+- Bei Fehlschlag: `name_checked_at=UTC_TIMESTAMP()` (falls Spalte vorhanden), um sofortige Retries zu vermeiden
 
 ## "Server-König" Logik
 

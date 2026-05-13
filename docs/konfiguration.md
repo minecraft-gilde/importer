@@ -108,6 +108,8 @@ Resolver-Läufe werden über eine gemeinsame Queue dedupliziert. After-Import, M
 | `database.connection-timeout-ms` | `10000` | Timeout für DB-Verbindungen |
 | `database.max-lifetime-ms` | `600000` | Maximale Lebensdauer einer Hikari-Verbindung |
 
+Der Importer initialisiert jede DB-Verbindung mit `time_zone = '+00:00'`. Alle vom Importer geschriebenen `DATETIME`-Werte sind dadurch UTC-Werte.
+
 Pflichtfelder:
 
 - `database.host`

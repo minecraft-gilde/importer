@@ -54,6 +54,8 @@ Wichtige Vertragsregeln:
 - `metric_def.enabled=1` steuert, welche Metriken in Ranglisten erscheinen
 - `metric_value` muss pro `(run_id, metric_id, uuid)` eindeutig sein
 - `player_stats.stats_gzip` enthält das kanonische, komprimierte Stats-JSON
+- Alle `DATETIME`-Werte, die der Importer schreibt, sind UTC-Werte
+- APIs sollten Zeitfelder als ISO-8601 UTC mit `Z` ausgeben, z.B. `2026-05-13T12:00:00Z`
 
 ## Namensauflösung (Mojang)
 
