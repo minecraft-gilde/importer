@@ -12,14 +12,14 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.1.2.build.66-stable")
 
     implementation("com.zaxxer:HikariCP:7.0.2")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.8")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.21.3")
 
     testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
-    testImplementation("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    testImplementation("io.papermc.paper:paper-api:26.1.2.build.66-stable")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
