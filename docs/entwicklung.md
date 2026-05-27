@@ -102,7 +102,7 @@ Bei Durchsatzproblemen iterativ anpassen:
 Die CI (`.github/workflows/ci.yml`) prüft aktuell:
 
 - Checkout
-- Java 21 Setup
+- Java 25 Setup
 - Gradle Wrapper Validation
 - `./gradlew build --no-daemon`
 
