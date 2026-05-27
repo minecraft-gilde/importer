@@ -193,13 +193,12 @@ public final class ImportCoordinator implements AutoCloseable {
         String retentionNote = "";
         Long candidateRunId = null;
 
-        Path statsDir = resolveStatsDir();
-        Path usercachePath = resolveUsercachePath();
-        Path bannedPlayersPath = resolveBannedPlayersPath();
-        WorldAgeSnapshot worldAgeSnapshot = null;
-
         try {
-            worldAgeSnapshot = resolveWorldAgeSnapshot();
+            ServerSnapshot serverSnapshot = resolveServerSnapshot();
+            Path statsDir = serverSnapshot.statsDir();
+            Path usercachePath = serverSnapshot.usercachePath();
+            Path bannedPlayersPath = serverSnapshot.bannedPlayersPath();
+            WorldAgeSnapshot worldAgeSnapshot = serverSnapshot.worldAgeSnapshot();
             if (!Files.isDirectory(statsDir)) {
                 throw new IllegalStateException("stats-dir not found: " + statsDir);
             }
@@ -2344,6 +2343,31 @@ public final class ImportCoordinator implements AutoCloseable {
         }
     }
 
+    private ServerSnapshot resolveServerSnapshot() throws Exception {
+        CompletableFuture<ServerSnapshot> future = new CompletableFuture<>();
+        try {
+            plugin.getServer().getGlobalRegionScheduler().execute(plugin, () -> {
+                try {
+                    future.complete(captureServerSnapshot());
+                } catch (Throwable throwable) {
+                    future.completeExceptionally(throwable);
+                }
+            });
+        } catch (RuntimeException ex) {
+            future.completeExceptionally(ex);
+        }
+        return future.get(30, TimeUnit.SECONDS);
+    }
+
+    private ServerSnapshot captureServerSnapshot() {
+        return new ServerSnapshot(
+                resolveStatsDir(),
+                resolveUsercachePath(),
+                resolveBannedPlayersPath(),
+                resolveWorldAgeSnapshot()
+        );
+    }
+
     private Path resolveStatsDir() {
         String configured = settings.statsDirectory();
         if (!isAuto(configured)) {
@@ -2457,6 +2481,14 @@ public final class ImportCoordinator implements AutoCloseable {
             String worldName,
             long worldAgeTicks,
             long worldAgeDays
+    ) {
+    }
+
+    private record ServerSnapshot(
+            Path statsDir,
+            Path usercachePath,
+            Path bannedPlayersPath,
+            WorldAgeSnapshot worldAgeSnapshot
     ) {
     }
 
