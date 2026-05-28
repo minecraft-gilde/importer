@@ -6,13 +6,13 @@ Dieses Kapitel beschreibt die fachlichen und technischen Schnittstellen des Impo
 
 Der Importer verarbeitet diese Dateien aus der Minecraft-Serverumgebung:
 
-- `world/stats/<uuid>.json`
+- `world/players/stats/<uuid>.json`
 - `usercache.json`
 - `banned-players.json`
 
 ### Erwartete Eigenschaften
 
-- `stats/*.json` enthält pro Spieler UUID-basierte Rohstatistiken
+- `players/stats/*.json` enthält pro Spieler UUID-basierte Rohstatistiken
 - `usercache.json` dient als primäre Namensquelle
 - `banned-players.json` liefert Ban-Snapshotdaten für die Anzeige
 

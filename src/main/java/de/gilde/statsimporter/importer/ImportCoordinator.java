@@ -2375,26 +2375,38 @@ public final class ImportCoordinator implements AutoCloseable {
         }
 
         Path worldContainer = plugin.getServer().getWorldContainer().toPath();
-        List<Path> worldStats = plugin.getServer().getWorlds().stream()
-                .map(world -> world.getWorldFolder().toPath().resolve("stats"))
+        List<Path> worldFolders = plugin.getServer().getWorlds().stream()
+                .map(world -> world.getWorldFolder().toPath())
                 .distinct()
                 .collect(Collectors.toList());
+        List<Path> statsCandidates = statsDirCandidates(worldContainer, worldFolders);
 
-        for (Path candidate : worldStats) {
+        for (Path candidate : statsCandidates) {
             if (Files.isDirectory(candidate)) {
                 return candidate;
             }
         }
 
-        Path vanillaDefault = worldContainer.resolve("world").resolve("stats");
-        if (Files.isDirectory(vanillaDefault)) {
-            return vanillaDefault;
-        }
+        return statsCandidates.get(0);
+    }
 
-        if (!worldStats.isEmpty()) {
-            return worldStats.get(0);
+    static List<Path> statsDirCandidates(Path worldContainer, List<Path> worldFolders) {
+        List<Path> candidates = new ArrayList<>();
+        for (Path worldFolder : worldFolders) {
+            addStatsDirCandidates(candidates, worldFolder);
         }
-        return vanillaDefault;
+        addStatsDirCandidates(candidates, worldContainer.resolve("world"));
+        return candidates;
+    }
+
+    private static void addStatsDirCandidates(List<Path> candidates, Path worldFolder) {
+        addDistinctPath(candidates, worldFolder.resolve("players").resolve("stats"));
+    }
+
+    private static void addDistinctPath(List<Path> candidates, Path candidate) {
+        if (!candidates.contains(candidate)) {
+            candidates.add(candidate);
+        }
     }
 
     private Path resolveUsercachePath() {

@@ -20,7 +20,7 @@ Sie richtet sich an zwei Zielgruppen:
 
 ## Kurzübersicht
 
-`StatsImporter` importiert Minecraft-Statistiken aus `world/stats/*.json` in MariaDB und materialisiert daraus Metrikwerte für Leaderboards.
+`StatsImporter` importiert Minecraft-Statistiken aus `world/players/stats/*.json` in MariaDB und materialisiert daraus Metrikwerte für Leaderboards.
 
 Kernmerkmale:
 

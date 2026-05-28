@@ -4,7 +4,7 @@ Dieses Projekt ist der technische Kern für den Import und die Aufbereitung der 
 
 ## Systemüberblick
 
-1. Der Minecraft-Server liefert Rohdaten aus `world/stats/*.json`, `usercache.json` und `banned-players.json`.
+1. Der Minecraft-Server liefert Rohdaten aus `world/players/stats/*.json`, `usercache.json` und `banned-players.json`.
 2. Das Plugin `StatsImporter` verarbeitet diese Daten und schreibt sie nach MariaDB.
 3. Die Website nutzt die aufbereiteten Daten über die Statistik-API.
 4. Das Frontend zeigt darauf basierend Ranglisten, Spielersuche und Profile an.

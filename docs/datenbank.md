@@ -41,7 +41,7 @@ Ban-Zeitpunkte aus `banned-players.json` werden mit dem dort enthaltenen Offset 
   - Name, Suchfeld `name_lc`, Quelleninfos, `last_seen`
 - `player_known`
   - persistente Known-Players-Quelle (run-unabhängig)
-  - wird aus `stats/*.json`, `usercache.json`, `banned-players.json` per Upsert gepflegt
+  - wird aus `players/stats/*.json`, `usercache.json`, `banned-players.json` per Upsert gepflegt
   - Name ist immer belegt (bei fehlender Quelle: deterministischer Fallback aus UUID)
   - Resolver-Metadatum `name_checked_at` steuert Refresh für Mojang-Rechecks
   - Felder für Statuslogik: `seen_in_stats`, `seen_in_usercache`, `seen_in_bans`, `first_seen`, `last_seen`

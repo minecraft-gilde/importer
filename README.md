@@ -50,7 +50,7 @@ Wichtig:
 - `import.safety.*`: Mindestwerte gegen falsche/leere Stats-Pfade
 - `import.safety.max-parse-errors`: Grenze für kaputte Stats-JSONs vor Snapshot-Veröffentlichung
 - `import.retention.keep-runs`: Aufbewahrung alter Snapshot-Runs
-- `import.stats-dir`: `auto` nutzt den Standardpfad des Servers (`<world>/stats`)
+- `import.stats-dir`: `auto` nutzt den Paper/Folia-26.1-Standardpfad (`<world>/players/stats`)
 - `import.usercache-path`: `auto` nutzt `<server-root>/usercache.json`
 - `import.banned-players-path`: `auto` nutzt `<server-root>/banned-players.json`
 - `import.worker-threads`: Anzahl paralleler Threads für die Stat-Berechnung

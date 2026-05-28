@@ -4,7 +4,7 @@
 
 Das Plugin läuft innerhalb eines Paper/Folia Servers und übernimmt ETL-Aufgaben:
 
-- Input: `world/stats/<uuid>.json` + `usercache.json` + `banned-players.json`
+- Input: `world/players/stats/<uuid>.json` + `usercache.json` + `banned-players.json`
 - Verarbeitung: Filter, Normierung, Metrikberechnung, Hash-Vergleich
 - Output: Tabellen `player_profile`, `player_known`, `player_ban`, `player_stats`, `metric_value` (plus optional `metric_award`)
 
