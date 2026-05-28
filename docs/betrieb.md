@@ -2,11 +2,11 @@
 
 ## Voraussetzungen
 
-- Java 21 (Build und Runtime)
-- Paper/Folia (API `1.21`)
+- Java 25 (Build und Runtime)
+- Paper/Folia (API `26.1.2`)
 - MariaDB/MySQL-kompatible Datenbank (für Schema siehe `docs/datenbank.md`)
 - Schreibrechte für Plugin-Datenordner
-- Leserechte auf `world/stats` und `usercache.json`
+- Leserechte auf `world/players/stats` und `usercache.json`
 
 ## Build
 

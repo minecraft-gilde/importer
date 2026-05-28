@@ -25,7 +25,7 @@ Default-Werte im Repository:
 
 | Key | Default | Bedeutung |
 |---|---:|---|
-| `import.stats-dir` | `auto` | Pfad zu `world/stats`; `auto/default/standard/leer` wird automatisch aufgelöst |
+| `import.stats-dir` | `auto` | Pfad zu `world/players/stats`; `auto/default/standard/leer` wird automatisch aufgelöst |
 | `import.usercache-path` | `auto` | Pfad zu `usercache.json`; bei `auto` wird `<worldContainer>/usercache.json` genutzt |
 | `import.banned-players-path` | `auto` | Pfad zu `banned-players.json`; bei `auto` wird `<worldContainer>/banned-players.json` genutzt |
 

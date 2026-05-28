@@ -4,30 +4,38 @@ plugins {
 }
 
 group = "de.gilde"
-version = providers.gradleProperty("releaseVersion").orElse("1.0.4").get()
+val pluginVersion = providers.gradleProperty("releaseVersion").orElse("1.0.5").get()
+version = pluginVersion
 
 repositories {
     mavenCentral()
-    maven("https://repo.papermc.io/repository/maven-public/")
+    maven {
+        name = "papermc"
+        url = uri("https://repo.papermc.io/repository/maven-public/")
+    }
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.1.2.build.+")
 
     implementation("com.zaxxer:HikariCP:7.0.2")
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.8")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.21.3")
 
     testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
-    testImplementation("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    testImplementation("io.papermc.paper:paper-api:26.1.2.build.+")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }
 
 tasks.processResources {
     filesMatching(listOf("plugin.yml", "paper-plugin.yml")) {
         expand(
             mapOf(
-                "version" to project.version
+                "version" to pluginVersion
             )
         )
     }
@@ -35,7 +43,7 @@ tasks.processResources {
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
-    options.release.set(21)
+    options.release.set(25)
 }
 
 tasks.shadowJar {

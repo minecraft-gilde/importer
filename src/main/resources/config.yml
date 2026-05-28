@@ -3,7 +3,7 @@
   enabled: true
   # Intervall für Timer-Imports in Sekunden.
   interval-seconds: 14400
-  # Pfad zum Stats-Ordner (auto = automatisch erkennen).
+  # Pfad zum Stats-Ordner (auto = Paper/Folia 26.1 <world>/players/stats).
   stats-dir: "auto"
   # Pfad zu usercache.json (auto = aus Server-Verzeichnis).
   usercache-path: "auto"
